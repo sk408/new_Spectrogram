@@ -28,6 +28,7 @@ var sensibility_temp;
 
 
 // visualiser setup - create web audio api context and canvas
+let animationId;
 
 let audioCtx;
 let debounce;
@@ -122,7 +123,9 @@ function selectAndStartMic(selected) {
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
-
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+        }
         let onSuccess = function(stream) {
             currentStream = stream;
             callback(stream);
@@ -319,7 +322,7 @@ function callback(stream) {
 
         PlotSpectro1();
 
-        requestAnimationFrame(Plot);
+       animationId = requestAnimationFrame(Plot);
     }
 }
 
