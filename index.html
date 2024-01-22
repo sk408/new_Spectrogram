@@ -23,9 +23,23 @@
                 <option value="Linear">Linear</option>
                 <option value="Mel" selected>Mel</option>
             </select>
+            <label for="colormap">Colormap:</label>
+            <select id="colormap" onchange="plot_colormap()">
+                <option value="jet">jet</option>
+                <option value="hot" selected>hot</option>
+                <option value="Greens">Greens</option>
+                <option value="summer">summer</option>
+                <option value="viridis">viridis</option>
+                <option value="turbo">turbo</option>
+                <option value="Blues">Blues</option>
+                <option value="terrain">terrain</option>
+                <option value="winter">winter</option>
+                <option value="binary">binary</option>
+                <option value="RdPu">RdPu</option>
+                <option value="gist_gray">gist_gray</option>
+            </select>
             <!-- Add similar labels for other select elements -->
         </fieldset>
-
         <fieldset>
             <legend>Spectrogram Parameters</legend>
             <label for="sizeFFT">Buffer Size:</label>
