@@ -57,3 +57,15 @@ h2 {
     text-align: center;
 }
 
+#title {
+font-size: 8pt;
+}
+
+#title h1 {
+    cursor: pointer;
+    color: blue;
+}
+
+#title h1:hover {
+    text-decoration: underline;
+}
