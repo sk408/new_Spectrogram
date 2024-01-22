@@ -92,8 +92,9 @@ if (!navigator.mediaDevices?.enumerateDevices) {
         console.log('The following error occured: ' + err);
     }
 
-    const devices =  navigator.mediaDevices.enumerateDevices();
-    this.mics = devices.filter(device => device.kind === 'audioinput');
+    const devices =  navigator.mediaDevices.enumerateDevices()
+    .then(devices => {
+        this.mics = devices.filter(device => device.kind === 'audioinput');
 
     let selectedMic;
     if (this.mics.length > 1) {
@@ -103,7 +104,9 @@ if (!navigator.mediaDevices?.enumerateDevices) {
       this.selectAndStartMic(this.mics[selectedMicIndex - 1]?.deviceId);
     } else {
       this.selectAndStartMic(this.mics[0]?.deviceId);
-    }
+    } })
+    .catch(err => console.log(err));
+
 }
 
 async function selectAndStartMic(selected) {
