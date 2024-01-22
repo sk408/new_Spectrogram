@@ -3,7 +3,7 @@ body {
     background-color: #00b5e2;
     font-family: Arial, sans-serif;
     font-size: 12pt;
-    
+
 }
 
 canvas {
@@ -37,10 +37,10 @@ canvas {
 .block_container select,
 .block_container input[type="range"],
 .block_container input[type="checkbox"],
+.block_container input[type="number"],
 .block_container output {
     margin-left: 10%;
 }
-
 h1 {
     font-size: 30pt;
     font-family: arial;

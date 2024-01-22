@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, user-scalable=no,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
     <title>Spectrogram</title>
     <link rel="stylesheet" href="./spectrogram.css">
 </head>
@@ -38,6 +39,14 @@
                 <option value="RdPu">RdPu</option>
                 <option value="gist_gray">gist_gray</option>
             </select>
+            <label for="speed">Speed:</label>
+            <select id="speed" onchange="PlotSpectro1()">
+                <option value="1">Speed: 1</option>
+                <option value="2">Speed: 2</option>
+                <option value="3">Speed: 3</option>
+                <option value="4" selected>Speed: 4</option>
+                <option value="5">Speed: 5</option>
+            </select>
             <!-- Add similar labels for other select elements -->
         </fieldset>
         <fieldset>
@@ -48,14 +57,20 @@
                 <option value="4096">4096</option>
                 <option value="8192" selected>8192</option>
             </select>
-            <!-- Add similar labels for other select elements -->
+            <label for="minFreq">Min Frequency:</label>
+            <input id="minFreq" type="number" min="0" max="20000" value="0">
+            <label for="maxFreq">Max Frequency:</label>
+            <input id="maxFreq" type="number" min="0" max="20000" value="20000">
+        </fieldset>
+        <!-- Add similar labels for other select elements -->
         </fieldset>
 
         <fieldset>
             <legend>General</legend>
             <button onclick="DisplayMultiLineAlert()">Info</button>
             <label for="sensibility">Sensibility:</label>
-            <input id="sensibility" type="range" value="60" min="10" max="100" oninput="this.nextElementSibling.value = this.value">
+            <input id="sensibility" type="range" value="60" min="10" max="100"
+                oninput="this.nextElementSibling.value = this.value">
             <output id="output_sensibility">60</output> dB
             <label for="scrolling">Scrolling</label>
             <input type="checkbox" id="scrolling" checked>
