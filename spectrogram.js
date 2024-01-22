@@ -27,21 +27,61 @@ var sensibility_temp;
 // disable stop button while not recording
 
 
+
 // visualiser setup - create web audio api context and canvas
 
 let audioCtx;
+let debounce;
+const createAudioGraphDebounced = () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
+};
 
-//const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
-//var my_x;
+let touchstartX = 0;
+let touchstartY = 0;
+let time = 0;
 
-//main block for doing the audio recording
+const handleGesture = (event) => {
+  const elapsedTime = new Date().getTime() - time;
+  const touchendX = event.changedTouches[0].screenX;
+  const touchendY = event.changedTouches[0].screenY;
+  const dx = touchendX - touchstartX;
+  const dy = touchendY - touchstartY;
+  const dist = Math.sqrt(dx * dx + dy * dy); // distance
+  if (elapsedTime < 250 && elapsedTime > 5) {
+    event.preventDefault();
+  }
+  if (!this.audioContext) { createAudioGraphDebounced(); }
 
-if (navigator.mediaDevices.getUserMedia) {
-    console.log('getUserMedia supported.');
+  if (elapsedTime < 250 && elapsedTime > 1) {
+    createAudioGraphDebounced();
+  }
+};
+function onKeyDown(e) {
+  if (e.key === " ")
+    createAudioGraphDebounced();
+}
 
-    const constraints = {
-        audio: true
-    };
+window.addEventListener('mousedown', function (event) {
+  if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
+    createAudioGraphDebounced();
+  }
+});
+window.addEventListener("keydown", onKeyDown);
+window.addEventListener('touchstart', (event) => {
+  touchstartX = event.changedTouches[0].screenX;
+  touchstartY = event.changedTouches[0].screenY;
+  time = new Date().getTime();
+});
+window.addEventListener('touchend', handleGesture);
+window.addEventListener('touchmove', function (event) {
+  event.preventDefault();
+}, { passive: false });
+
+
+if (!navigator.mediaDevices?.enumerateDevices) {
+    console.log("enumerateDevices() not supported.");
+  } else {
     let chunks = [];
 
     let onSuccess = function(stream) {
@@ -52,11 +92,35 @@ if (navigator.mediaDevices.getUserMedia) {
         console.log('The following error occured: ' + err);
     }
 
-    navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    this.mics = devices.filter(device => device.kind === 'audioinput');
 
-} else {
-    console.log('getUserMedia not supported on your browser!');
+    let selectedMic;
+    if (this.mics.length > 1) {
+      // Let the user select a microphone
+      let micOptions = this.mics.map((mic, index) => `${index + 1}: ${mic.label}`).join('\n');
+      let selectedMicIndex = prompt(`Please select a microphone:\n${micOptions}`);
+      this.selectAndStartMic(this.mics[selectedMicIndex - 1]?.deviceId);
+    } else {
+      this.selectAndStartMic(this.mics[0]?.deviceId);
+    }
 }
+
+async function selectAndStartMic(selected) {
+if (navigator.mediaDevices.getUserMedia) {
+    console.log('getUserMedia supported.');
+
+    const constraints = { audio: { deviceId: selected ? { exact: selected } : undefined } };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
+    this.ctx = this.$.canvas.getContext('2d');
+    this.onStream(stream);
+    this.createDecibelMeter();
+  }
+  else {
+        console.log('getUserMedia not supported on your browser!');
+    }
+}
+
 var analyser;
 var bufferLength;
 var dataTime;
@@ -241,38 +305,75 @@ function callback(stream) {
     }
 }
 
+// function myFFT(signal) {
+//     if (signal.length == 1)
+//         return signal;
+//     var halfLength = signal.length / 2;
+//     var even = [];
+//     var odd = [];
+//     even.length = halfLength;
+//     odd.length = halfLength;
+//     for (var i = 0; i < halfLength; ++i) {
+//         even[i] = signal[i * 2];
+//         odd[i] = signal[i * 2 + 1];
+//     }
+//     even = myFFT(even);
+//     odd = myFFT(odd);
+//     for (var k = 0; k < halfLength; ++k) {
+//         if (!(even[k] instanceof Complex))
+//             even[k] = new Complex(even[k], 0);
+//         if (!(odd[k] instanceof Complex))
+//             odd[k] = new Complex(odd[k], 0);
+//         var a = Math.cos(2 * Math.PI * k / signal.length);
+//         var b = Math.sin(-2 * Math.PI * k / signal.length);
+//         var temp_k_real = odd[k].re * a - odd[k].im * b;
+//         var temp_k_imag = odd[k].re * b + odd[k].im * a;
+//         var A_k = new Complex(even[k].re + temp_k_real, even[k].im + temp_k_imag);
+//         var B_k = new Complex(even[k].re - temp_k_real, even[k].im - temp_k_imag);
+//         signal[k] = A_k;
+//         signal[k + halfLength] = B_k;
+//     }
+//     return signal;
+// }
+
 function myFFT(signal) {
-    if (signal.length == 1)
+    if (signal.length === 1)
         return signal;
-    var halfLength = signal.length / 2;
-    var even = [];
-    var odd = [];
-    even.length = halfLength;
-    odd.length = halfLength;
-    for (var i = 0; i < halfLength; ++i) {
+
+    const halfLength = signal.length / 2;
+    const even = new Float64Array(halfLength);
+    const odd = new Float64Array(halfLength);
+
+    for (let i = 0; i < halfLength; ++i) {
         even[i] = signal[i * 2];
         odd[i] = signal[i * 2 + 1];
     }
-    even = myFFT(even);
-    odd = myFFT(odd);
-    for (var k = 0; k < halfLength; ++k) {
-        if (!(even[k] instanceof Complex))
-            even[k] = new Complex(even[k], 0);
-        if (!(odd[k] instanceof Complex))
-            odd[k] = new Complex(odd[k], 0);
-        var a = Math.cos(2 * Math.PI * k / signal.length);
-        var b = Math.sin(-2 * Math.PI * k / signal.length);
-        var temp_k_real = odd[k].re * a - odd[k].im * b;
-        var temp_k_imag = odd[k].re * b + odd[k].im * a;
-        var A_k = new Complex(even[k].re + temp_k_real, even[k].im + temp_k_imag);
-        var B_k = new Complex(even[k].re - temp_k_real, even[k].im - temp_k_imag);
-        signal[k] = A_k;
-        signal[k + halfLength] = B_k;
+
+    const evenFFT = myFFT(even);
+    const oddFFT = myFFT(odd);
+
+    for (let k = 0; k < halfLength; ++k) {
+        const evenComplex = evenFFT[k] instanceof Complex ? evenFFT[k] : new Complex(evenFFT[k], 0);
+        const oddComplex = oddFFT[k] instanceof Complex ? oddFFT[k] : new Complex(oddFFT[k], 0);
+
+        const a = Math.cos(2 * Math.PI * k / signal.length);
+        const b = Math.sin(-2 * Math.PI * k / signal.length);
+
+        const temp_k_real = oddComplex.re * a - oddComplex.im * b;
+        const temp_k_imag = oddComplex.re * b + oddComplex.im * a;
+
+        evenComplex.re += temp_k_real;
+        evenComplex.im += temp_k_imag;
+
+        oddComplex.re -= temp_k_real;
+        oddComplex.im -= temp_k_imag;
+
+        signal[k] = evenComplex;
+        signal[k + halfLength] = oddComplex;
     }
+
     return signal;
 }
-
-
 
 function Complex(re, im) {
     this.re = re;

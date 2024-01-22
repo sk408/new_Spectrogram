@@ -1,6 +1,9 @@
                                                                                 
 body {
     background-color: #00b5e2;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    
 }
 
 canvas {
@@ -17,8 +20,25 @@ canvas {
     border:3px solid #d3d3d3;
 }
 
-block_container {
+#block_container {
+    margin: 2em 0;
+}
 
+.block_container {
+    margin: 1em 0;
+}
+
+.block_container label {
+    display: block;
+    margin-left: 10%;
+    background-color: #003B5C;
+    color: white;
+}
+.block_container select,
+.block_container input[type="range"],
+.block_container input[type="checkbox"],
+.block_container output {
+    margin-left: 10%;
 }
 
 h1 {
