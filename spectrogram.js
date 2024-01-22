@@ -48,12 +48,12 @@ const handleGesture = (event) => {
   const dx = touchendX - touchstartX;
   const dy = touchendY - touchstartY;
   const dist = Math.sqrt(dx * dx + dy * dy); // distance
-  if (elapsedTime < 250 && elapsedTime > 5) {
-    event.preventDefault();
-  }
+//   if (elapsedTime < 250 && elapsedTime > 5) {
+//     event.preventDefault();
+//   }
   if (!this.audioContext) { createAudioGraphDebounced(); }
 
-  if (elapsedTime < 250 && elapsedTime > 1) {
+  if (elapsedTime > 250 && elapsedTime > 250) {
     createAudioGraphDebounced();
   }
 };
@@ -74,9 +74,9 @@ window.addEventListener('touchstart', (event) => {
   time = new Date().getTime();
 });
 window.addEventListener('touchend', handleGesture);
-window.addEventListener('touchmove', function (event) {
-  event.preventDefault();
-}, { passive: false });
+// window.addEventListener('touchmove', function (event) {
+//   event.preventDefault();
+// }, { passive: false });
 
 
 if (!navigator.mediaDevices?.enumerateDevices) {
