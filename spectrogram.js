@@ -30,33 +30,115 @@ var sensibility_temp;
 // visualiser setup - create web audio api context and canvas
 
 let audioCtx;
+let debounce;
+const createAudioGraphDebounced = () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
+};
+
+let touchstartX = 0;
+let touchstartY = 0;
+let time = 0;
+
+const handleGesture = (event) => {
+  const elapsedTime = new Date().getTime() - time;
+  const touchendX = event.changedTouches[0].screenX;
+  const touchendY = event.changedTouches[0].screenY;
+  const dx = touchendX - touchstartX;
+  const dy = touchendY - touchstartY;
+  const dist = Math.sqrt(dx * dx + dy * dy); // distance
+//   if (elapsedTime < 250 && elapsedTime > 5) {
+//     event.preventDefault();
+//   }
+  if (!this.audioContext) { createAudioGraphDebounced(); }
+
+  if (elapsedTime > 250 && elapsedTime > 250) {
+    createAudioGraphDebounced();
+  }
+};
+function onKeyDown(e) {
+  if (e.key === " ")
+    createAudioGraphDebounced();
+}
+
+window.addEventListener('mousedown', function (event) {
+  if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
+    createAudioGraphDebounced();
+  }
+});
+window.addEventListener("keydown", onKeyDown);
+window.addEventListener('touchstart', (event) => {
+  touchstartX = event.changedTouches[0].screenX;
+  touchstartY = event.changedTouches[0].screenY;
+  time = new Date().getTime();
+});
+window.addEventListener('touchend', handleGesture);
 
 //const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
 //var my_x;
 
 //main block for doing the audio recording
 
-if (navigator.mediaDevices.getUserMedia) {
-    console.log('getUserMedia supported.');
 
-    const constraints = {
-        audio: true
-    };
-    let chunks = [];
+if (!navigator.mediaDevices?.enumerateDevices) {
+    console.log("enumerateDevices() not supported.");
+  } else {
+    // let chunks = [];
 
-    let onSuccess = function(stream) {
-        callback(stream);
-    }
+    // let onSuccess = function(stream) {
+    //     callback(stream);
+    // }
 
-    let onError = function(err) {
-        console.log('The following error occured: ' + err);
-    }
+    // let onError = function(err) {
+    //     console.log('The following error occured: ' + err);
+    // }
 
-    navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
+    navigator.mediaDevices.enumerateDevices()
+    .then(devices => {
+        this.mics = devices.filter(device => device.kind === 'audioinput');
 
-} else {
-    console.log('getUserMedia not supported on your browser!');
+        // Populate the microphone dropdown
+        const microphoneSelect = document.getElementById('microphone');
+        this.mics.forEach((mic, index) => {
+            const option = document.createElement('option');
+            option.value = mic.deviceId;
+            option.text = mic.label || `Microphone ${index + 1}`;
+            microphoneSelect.appendChild(option);
+        });
+
+        // Select the first microphone by default
+        this.selectAndStartMic(this.mics[0]?.deviceId);
+    })
+    .catch(err => console.log(err));
+ 
 }
+let currentStream;
+
+function selectAndStartMic(selected) {
+    if (navigator.mediaDevices.getUserMedia) {
+        console.log('getUserMedia supported.');
+
+        // Stop the current stream if it exists
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        let onSuccess = function(stream) {
+            currentStream = stream;
+            callback(stream);
+        }
+
+        let onError = function(err) {
+            console.log('The following error occured: ' + err);
+        }
+
+        const constraints = { audio: { deviceId: selected ? { exact: selected } : undefined } };
+        navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
+    } else {
+        console.log('getUserMedia not supported on your browser!');
+    }
+}
+
 var analyser;
 var bufferLength;
 var dataTime;

@@ -51,7 +51,7 @@
                 <option value="8">Speed: 8</option>
                 <option value="9">Speed: 9</option>
                 <option value="10">Speed: 10</option>
-                
+
             </select>
             <!-- Add similar labels for other select elements -->
         </fieldset class="fieldset">
@@ -94,6 +94,8 @@
                 <option value="myFFT" selected>Custom FFT</option>
                 <option value="WebAudio">Web Audio</option>
             </select>
+            <label for="microphone">Microphone:</label>
+            <select id="microphone" onchange="selectAndStartMic(this.value)"></select>
         </fieldset class="fieldset">
 
         <canvas class="canvas"></canvas>
