@@ -63,7 +63,7 @@ font-size: 8pt;
 
 #title h1 {
     cursor: pointer;
-    color: blue;
+    color: black;
 }
 
 #title h1:hover {
