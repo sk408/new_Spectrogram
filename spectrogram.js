@@ -61,8 +61,6 @@ function onKeyDown(e) {
   if (e.key === " ")
     createAudioGraphDebounced();
 }
-var canvas = document.querySelector('.canvas');
-
 
 canvas.addEventListener('mousedown', function (event) {
   if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
