@@ -82,6 +82,18 @@
             <input type="checkbox" id="scrolling" checked>
             <label for="stop">Pause</label>
             <input type="checkbox" id="stop">
+            <label for="window">Window:</label>
+            <select id="window">
+                <option value="None">None</option>
+                <option value="Cosine">Cosine</option>
+                <option value="Hanning">Hanning</option>
+                <option value="BH7" selected>Blackman Harris 7</option>
+            </select>
+            <label for="FFT">FFT Function:</label>
+            <select id="FFT" onchange="SetDefaultWindow()">
+                <option value="myFFT" selected>Custom FFT</option>
+                <option value="WebAudio">Web Audio</option>
+            </select>
         </fieldset>
 
         <canvas class="canvas"></canvas>
