@@ -61,19 +61,21 @@ function onKeyDown(e) {
   if (e.key === " ")
     createAudioGraphDebounced();
 }
+var canvas = document.querySelector('.canvas');
 
-window.addEventListener('mousedown', function (event) {
+
+canvas.addEventListener('mousedown', function (event) {
   if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
     createAudioGraphDebounced();
   }
 });
-window.addEventListener("keydown", onKeyDown);
-window.addEventListener('touchstart', (event) => {
+canvas.addEventListener("keydown", onKeyDown);
+canvas.addEventListener('touchstart', (event) => {
   touchstartX = event.changedTouches[0].screenX;
   touchstartY = event.changedTouches[0].screenY;
   time = new Date().getTime();
 });
-window.addEventListener('touchend', handleGesture);
+canvas.addEventListener('touchend', handleGesture);
 
 //const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
 //var my_x;
