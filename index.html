@@ -14,7 +14,7 @@
     <canvas class="canvas"></canvas>
     
     <div id="block_container">
-        <h1>Spectrogram</h1>
+        <h1 onclick="toggleContent()">Spectrogram</h1>
         <hr>
     </div>
 
@@ -92,6 +92,16 @@
 
     <script src="./js-colormaps.js"></script>
     <script src="./spectrogram.js"></script>
+    <script>
+        function toggleContent() {
+            var content = document.getElementById('content');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
+        }
+        </script>
 </body>
 
 </html>
