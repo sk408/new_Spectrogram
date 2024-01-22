@@ -34,6 +34,7 @@ canvas {
     background-color: #003B5C;
     color: white;
 }
+#my_element,
 .block_container select,
 .block_container input[type="range"],
 .block_container input[type="checkbox"],
