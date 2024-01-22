@@ -123,9 +123,9 @@ if (navigator.mediaDevices.getUserMedia) {
     }
     const constraints = { audio: { deviceId: selected ? { exact: selected } : undefined } };
     const stream = await navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
-    this.ctx = this.$.canvas.getContext('2d');
-    this.onStream(stream);
-    this.createDecibelMeter();
+    // this.ctx = this.$.canvas.getContext('2d');
+    // this.onStream(stream);
+    // this.createDecibelMeter();
   }
   else {
         console.log('getUserMedia not supported on your browser!');
