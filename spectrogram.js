@@ -82,15 +82,15 @@ window.addEventListener('touchmove', function (event) {
 if (!navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
   } else {
-    let chunks = [];
+    // let chunks = [];
 
-    let onSuccess = function(stream) {
-        callback(stream);
-    }
+    // let onSuccess = function(stream) {
+    //     callback(stream);
+    // }
 
-    let onError = function(err) {
-        console.log('The following error occured: ' + err);
-    }
+    // let onError = function(err) {
+    //     console.log('The following error occured: ' + err);
+    // }
 
     const devices =  navigator.mediaDevices.enumerateDevices()
     .then(devices => {
@@ -112,7 +112,15 @@ if (!navigator.mediaDevices?.enumerateDevices) {
 async function selectAndStartMic(selected) {
 if (navigator.mediaDevices.getUserMedia) {
     console.log('getUserMedia supported.');
+    let chunks = [];
 
+    let onSuccess = function(stream) {
+        callback(stream);
+    }
+
+    let onError = function(err) {
+        console.log('The following error occured: ' + err);
+    }
     const constraints = { audio: { deviceId: selected ? { exact: selected } : undefined } };
     const stream = await navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
     this.ctx = this.$.canvas.getContext('2d');
