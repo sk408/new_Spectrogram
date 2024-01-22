@@ -26,6 +26,11 @@ canvas {
 
 .block_container {
     margin: 1em 0;
+    width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .block_container label {
@@ -41,6 +46,28 @@ canvas {
 .block_container input[type="number"],
 .block_container output {
     margin-left: 10%;
+}
+.fieldset {
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.fieldset legend {
+    padding: 0 10px;
+}
+
+.fieldset label {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.fieldset select,
+.fieldset input {
+    width: 100%;
+    padding: 5px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
 }
 h1 {
     font-size: 30pt;

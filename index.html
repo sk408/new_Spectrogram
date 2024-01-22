@@ -17,7 +17,7 @@
     </div>
 
     <div class="block_container">
-        <fieldset>
+        <fieldset class="fieldset">
             <legend>Appearance</legend>
             <label for="scale">Scale:</label>
             <select id="scale" onchange="YAxisMarks()">
@@ -54,8 +54,8 @@
                 
             </select>
             <!-- Add similar labels for other select elements -->
-        </fieldset>
-        <fieldset>
+        </fieldset class="fieldset">
+        <fieldset class="fieldset">
             <legend>Spectrogram Parameters</legend>
             <label for="sizeFFT">Buffer Size:</label>
             <select id="sizeFFT" onchange="callback(stream)">
@@ -67,11 +67,11 @@
             <input id="f_min" type="number" min="0" max="20000" value="0">
             <label for="f_max">Max Frequency:</label>
             <input id="f_max" type="number" min="0" max="20000" value="20000">
-        </fieldset>
+        </fieldset class="fieldset">
         <!-- Add similar labels for other select elements -->
-        </fieldset>
+        </fieldset class="fieldset">
 
-        <fieldset>
+        <fieldset class="fieldset">
             <legend>General</legend>
             <button onclick="DisplayMultiLineAlert()">Info</button>
             <label id="my_element" for="sensibility">Sensibility:</label>
@@ -94,7 +94,7 @@
                 <option value="myFFT" selected>Custom FFT</option>
                 <option value="WebAudio">Web Audio</option>
             </select>
-        </fieldset>
+        </fieldset class="fieldset">
 
         <canvas class="canvas"></canvas>
     </div>
