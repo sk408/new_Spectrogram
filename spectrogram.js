@@ -92,7 +92,7 @@ if (!navigator.mediaDevices?.enumerateDevices) {
         console.log('The following error occured: ' + err);
     }
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
+    const devices =  navigator.mediaDevices.enumerateDevices();
     this.mics = devices.filter(device => device.kind === 'audioinput');
 
     let selectedMic;
