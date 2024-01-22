@@ -11,6 +11,8 @@
 </head>
 
 <body>
+    <canvas class="canvas"></canvas>
+    
     <div id="block_container">
         <h1>Spectrogram</h1>
         <hr>
@@ -28,16 +30,6 @@
             <select id="colormap" onchange="plot_colormap()">
                 <option value="jet">jet</option>
                 <option value="hot" selected>hot</option>
-                <option value="Greens">Greens</option>
-                <option value="summer">summer</option>
-                <option value="viridis">viridis</option>
-                <option value="turbo">turbo</option>
-                <option value="Blues">Blues</option>
-                <option value="terrain">terrain</option>
-                <option value="winter">winter</option>
-                <option value="binary">binary</option>
-                <option value="RdPu">RdPu</option>
-                <option value="gist_gray">gist_gray</option>
             </select>
             <label for="speed">Speed:</label>
             <select id="speed" onchange="PlotSpectro1()">
@@ -68,9 +60,6 @@
             <label for="f_max">Max Frequency:</label>
             <input id="f_max" type="number" min="0" max="20000" value="20000">
         </fieldset class="fieldset">
-        <!-- Add similar labels for other select elements -->
-        </fieldset class="fieldset">
-
         <fieldset class="fieldset">
             <legend>General</legend>
             <button onclick="DisplayMultiLineAlert()">Info</button>
@@ -98,7 +87,7 @@
             <select id="microphone" onchange="selectAndStartMic(this.value)"></select>
         </fieldset class="fieldset">
 
-        <canvas class="canvas"></canvas>
+        <!-- <canvas class="canvas"></canvas> -->
     </div>
 
     <script src="./js-colormaps.js"></script>
