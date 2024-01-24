@@ -73,7 +73,7 @@ canvas.addEventListener('mousedown', function (event) {
     createAudioGraphDebounced();
   }
 });
-canvas.addEventListener("keydown", onKeyDown);
+window.addEventListener("keydown", onKeyDown);
 canvas.addEventListener('touchstart', (event) => {
   touchstartX = event.changedTouches[0].screenX;
   touchstartY = event.changedTouches[0].screenY;
