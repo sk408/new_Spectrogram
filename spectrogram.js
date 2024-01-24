@@ -51,8 +51,7 @@ const handleGesture = (event) => {
 //   if (elapsedTime < 250 && elapsedTime > 5) {
 //     event.preventDefault();
 //   }
-  if (!this.audioCtx) { createAudioGraphDebounced(); }
-
+ 
   if (elapsedTime > 250 && elapsedTime > 250) {
     createAudioGraphDebounced();
   }
@@ -128,13 +127,17 @@ navigator.mediaDevices.getUserMedia = function(constraints) {
             currentStream = stream;
 
             // Create an AudioContext
-            let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
+            if (!this.audioCtx) {
+                this.audioCtx = new AudioContext({
+                    latencyHint: 'interactive',
+                    sampleRate: 44100,
+                });
+            }
             // Create a MediaStreamSource from the stream
-            let source = audioContext.createMediaStreamSource(stream);
+            let source = this.audioCtx.createMediaStreamSource(stream);
 
             // Create a ScriptProcessorNode for buffering
-            let scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
+            let scriptNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
 
             // Create a buffer to hold the audio data
             let audioBuffer = [];
