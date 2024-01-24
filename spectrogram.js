@@ -33,7 +33,14 @@ let animationId;
 let audioCtx;
 let debounce;
 const createAudioGraphDebounced = () => {
-  clearTimeout(debounce);
+              // Create an AudioContext
+              if (!this.audioCtx) {
+                this.audioCtx = new AudioContext({
+                    latencyHint: 'interactive',
+                    sampleRate: 44100,
+                });
+            }
+    clearTimeout(debounce);
   debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
 };
 
@@ -80,7 +87,8 @@ canvas.addEventListener('touchend', handleGesture);
 //main block for doing the audio recording
 
 
-if (!navigator.mediaDevices?.enumerateDevices) {
+function start_canvas() {
+    if (!navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
   } else {
     // let chunks = [];
@@ -112,6 +120,8 @@ if (!navigator.mediaDevices?.enumerateDevices) {
     .catch(err => console.log(err));
  
 }
+};
+
 let currentStream;
 const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
 let audioBuffer = [];
