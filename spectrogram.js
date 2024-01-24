@@ -198,13 +198,13 @@ function selectAndStartMic(selected) {
 function playAudioBuffer(audioBuffer) {
     // Create an AudioBuffer
     console.log(audioBuffer.length);
-    let buffer = audioCtx.createBuffer(1, audioBuffer.length, audioCtx.sampleRate);
+    let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
 
     // Copy the audio data to the AudioBuffer
     for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
         let bufferChannel = buffer.getChannelData(channel);
-        for (let i = 0; i < audioBuffer.length; i++) {
-            bufferChannel[i] = audioBuffer[i][channel];
+        for (let i = 0; i < audioBuffer[0].length; i++) {
+            bufferChannel[i] = audioBuffer[channel][i];
         }
     }
 
