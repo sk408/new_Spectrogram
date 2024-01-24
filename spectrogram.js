@@ -272,7 +272,7 @@ function callback(stream) {
     
 
     // Create a ScriptProcessorNode for buffering
-    let scriptNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
+    let scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
 
     // Create a buffer to hold the audio data
 
@@ -292,7 +292,7 @@ function callback(stream) {
 
     // Connect the nodes
     source.connect(scriptNode);
-    scriptNode.connect(this.audioCtx.destination);
+    scriptNode.connect(audioCtx.destination);
 
 
     Plot();
