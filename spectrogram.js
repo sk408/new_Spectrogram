@@ -114,6 +114,7 @@ if (!navigator.mediaDevices?.enumerateDevices) {
 }
 let currentStream;
 const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
+let audioBuffer = [];
 
 navigator.mediaDevices.getUserMedia = function(constraints) {
     // Stop the current stream if it exists
@@ -140,8 +141,7 @@ navigator.mediaDevices.getUserMedia = function(constraints) {
             let scriptNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
 
             // Create a buffer to hold the audio data
-            let audioBuffer = [];
-
+        
             // Set up the onaudioprocess event handler
             scriptNode.onaudioprocess = function(audioProcessingEvent) {
                 // Get the input buffer
