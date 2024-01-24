@@ -33,15 +33,13 @@ let animationId;
 let audioCtx;
 let debounce;
 const createAudioGraphDebounced = () => {
-              // Create an AudioContext
-              if (!this.audioCtx) {
-                this.audioCtx = new AudioContext({
-                    latencyHint: 'interactive',
-                    sampleRate: 44100,
-                });
-                start_canvas();
-            }
-    clearTimeout(debounce);
+    if (!this.audioCtx) {
+        this.audioCtx = new AudioContext({
+            latencyHint: 'interactive',
+            sampleRate: 44100,
+        });
+    }
+  clearTimeout(debounce);
   debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
 };
 
@@ -74,7 +72,7 @@ canvas.addEventListener('mousedown', function (event) {
     createAudioGraphDebounced();
   }
 });
-window.addEventListener("keydown", onKeyDown);
+canvas.addEventListener("keydown", onKeyDown);
 canvas.addEventListener('touchstart', (event) => {
   touchstartX = event.changedTouches[0].screenX;
   touchstartY = event.changedTouches[0].screenY;
@@ -88,8 +86,7 @@ canvas.addEventListener('touchend', handleGesture);
 //main block for doing the audio recording
 
 
-function start_canvas() {
-    if (!navigator.mediaDevices?.enumerateDevices) {
+if (!navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
   } else {
     // let chunks = [];
@@ -121,90 +118,64 @@ function start_canvas() {
     .catch(err => console.log(err));
  
 }
-};
-
 let currentStream;
-const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
+// const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
 let audioBuffer = [];
+// navigator.mediaDevices.getUserMedia = function(constraints) {
+//     // Stop the current stream if it exists
+//     if (currentStream) {
+//         currentStream.getTracks().forEach(track => track.stop());
+//     }
 
-navigator.mediaDevices.getUserMedia = function(constraints) {
-    // Stop the current stream if it exists
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-    }
+//     // Call the original getUserMedia function
+//     return originalGetUserMedia.call(navigator.mediaDevices, constraints)
+//         .then(stream => {
+//             currentStream = stream;
 
-    // Call the original getUserMedia function
-    return originalGetUserMedia.call(navigator.mediaDevices, constraints)
-        .then(stream => {
-            currentStream = stream;
+//             // Create an AudioContext
+//             if (!this.audioCtx) {
+//                 this.audioCtx = new AudioContext({
+//                     latencyHint: 'interactive',
+//                     sampleRate: 44100,
+//                 });
+//             }
+//             // Create a MediaStreamSource from the stream
+//             let source = this.audioCtx.createMediaStreamSource(stream);
 
-            // Create an AudioContext
-            if (!this.audioCtx) {
-                this.audioCtx = new AudioContext({
-                    latencyHint: 'interactive',
-                    sampleRate: 44100,
-                });
-            }
-            // Create a MediaStreamSource from the stream
-            let source = this.audioCtx.createMediaStreamSource(stream);
+//             // Create a ScriptProcessorNode for buffering
+//             let scriptNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
 
-            // Create a ScriptProcessorNode for buffering
-            let scriptNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
-
-            // Create a buffer to hold the audio data
+//             // Create a buffer to hold the audio data
         
-            // Set up the onaudioprocess event handler
-            scriptNode.onaudioprocess = function(audioProcessingEvent) {
-                // Get the input buffer
-                let inputBuffer = audioProcessingEvent.inputBuffer;
+//             // Set up the onaudioprocess event handler
+//             scriptNode.onaudioprocess = function(audioProcessingEvent) {
+//                 // Get the input buffer
+//                 let inputBuffer = audioProcessingEvent.inputBuffer;
 
-                // Loop through the input channels (in this case, just one)
-                for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
-                    let inputData = inputBuffer.getChannelData(channel);
+//                 // Loop through the input channels (in this case, just one)
+//                 for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+//                     let inputData = inputBuffer.getChannelData(channel);
 
-                    // Push the audio data into the buffer
-                    audioBuffer.push(new Float32Array(inputData));
-                }
-            };
+//                     // Push the audio data into the buffer
+//                     audioBuffer.push(new Float32Array(inputData));
+//                 }
+//             };
 
+<<<<<<< HEAD
             // Connect the nodes
             source.connect(scriptNode);
             scriptNode.connect(this.audioCtx.destination);
+=======
+//             // Connect the nodes
+//             source.connect(scriptNode);
+//             scriptNode.connect(this.audioCtx.destination);
+>>>>>>> eb54880 (Refactor audio recording and playback functionality)
 
-            return stream;
-        });
-};
-function playAudioBuffer(audioBuffer) {
-    // Create an AudioBuffer
-    let buffer = audioCtx.createBuffer(1, audioBuffer.length, audioCtx.sampleRate);
-
-    // Copy the audio data to the AudioBuffer
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-        let bufferChannel = buffer.getChannelData(channel);
-        for (let i = 0; i < audioBuffer.length; i++) {
-            bufferChannel[i] = audioBuffer[i][channel];
-        }
-    }
-
-    // Create an AudioBufferSourceNode
-    let source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-
-    // Connect the AudioBufferSourceNode to the destination
-    source.connect(audioCtx.destination);
-
-    // Start playing the audio
-    source.start();
-}
+//             return stream;
+//         });
+// };
 
 function selectAndStartMic(selected) {
-                // Create an AudioContext
-                if (!this.audioCtx) {
-                    this.audioCtx = new AudioContext({
-                        latencyHint: 'interactive',
-                        sampleRate: 44100,
-                    });
-                }
     if (navigator.mediaDevices.getUserMedia) {
         console.log('getUserMedia supported.');
 
@@ -230,7 +201,29 @@ function selectAndStartMic(selected) {
         console.log('getUserMedia not supported on your browser!');
     }
 }
+function playAudioBuffer(audioBuffer) {
+    // Create an AudioBuffer
+    console.log(audioBuffer.length);
+    let buffer = audioCtx.createBuffer(1, audioBuffer.length, audioCtx.sampleRate);
 
+    // Copy the audio data to the AudioBuffer
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+        let bufferChannel = buffer.getChannelData(channel);
+        for (let i = 0; i < audioBuffer.length; i++) {
+            bufferChannel[i] = audioBuffer[i][channel];
+        }
+    }
+
+    // Create an AudioBufferSourceNode
+    let source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+
+    // Connect the AudioBufferSourceNode to the destination
+    source.connect(audioCtx.destination);
+
+    // Start playing the audio
+    source.start();
+}
 
 var analyser;
 var bufferLength;
@@ -282,6 +275,30 @@ function callback(stream) {
     message0 = "Sampling rate: " + sr.toString() + " Hz";
     source.connect(analyser);
     //analyser.connect(audioCtx.destination);
+    
+
+    // Create a ScriptProcessorNode for buffering
+    let scriptNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
+
+    // Create a buffer to hold the audio data
+
+    // Set up the onaudioprocess event handler
+    scriptNode.onaudioprocess = function(audioProcessingEvent) {
+        // Get the input buffer
+        let inputBuffer = audioProcessingEvent.inputBuffer;
+
+        // Loop through the input channels (in this case, just one)
+        for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+            let inputData = inputBuffer.getChannelData(channel);
+
+            // Push the audio data into the buffer
+            audioBuffer.push(new Float32Array(inputData));
+        }
+    };
+
+    // Connect the nodes
+    source.connect(scriptNode);
+    scriptNode.connect(this.audioCtx.destination);
 
 
     Plot();
