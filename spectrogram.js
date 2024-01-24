@@ -187,6 +187,13 @@ function playAudioBuffer(audioBuffer) {
 }
 
 function selectAndStartMic(selected) {
+                // Create an AudioContext
+                if (!this.audioCtx) {
+                    this.audioCtx = new AudioContext({
+                        latencyHint: 'interactive',
+                        sampleRate: 44100,
+                    });
+                }
     if (navigator.mediaDevices.getUserMedia) {
         console.log('getUserMedia supported.');
 
