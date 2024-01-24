@@ -267,7 +267,7 @@ function callback(stream) {
 
     //document.getElementById("console4").innerHTML = "Velocidad de Muestreo en Hz = " + sr.toString();
     message0 = "Sampling rate: " + sr.toString() + " Hz";
-    source.connect(analyser);
+    
     //analyser.connect(audioCtx.destination);
     
 
@@ -291,7 +291,8 @@ function callback(stream) {
     };
 
     // Connect the nodes
-    source.connect(scriptNode);
+    source.connect(analyser);
+    analyser.connect(scriptNode);
     scriptNode.connect(audioCtx.destination);
 
 
