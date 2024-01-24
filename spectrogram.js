@@ -143,7 +143,7 @@ let audioBuffer = [];
 //             let source = this.audioCtx.createMediaStreamSource(stream);
 
 //             // Create a ScriptProcessorNode for buffering
-//             let scriptNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
+//             let scriptNode = this.audioCtx.createScriptProcessor(16384, 1, 1);
 
 //             // Create a buffer to hold the audio data
         
@@ -285,8 +285,9 @@ function callback(stream) {
         for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
             let inputData = inputBuffer.getChannelData(channel);
 
-            // Push the audio data into the buffer
-            audioBuffer.push(new Float32Array(inputData));
+            // // Push the audio data into the buffer
+            // audioBuffer.push(new Float32Array(inputData));
+            audioBuffer[channel][i] += inputData[i];
         }
     };
 
