@@ -163,6 +163,28 @@ navigator.mediaDevices.getUserMedia = function(constraints) {
             return stream;
         });
 };
+function playAudioBuffer(audioBuffer) {
+    // Create an AudioBuffer
+    let buffer = audioCtx.createBuffer(1, audioBuffer.length, audioCtx.sampleRate);
+
+    // Copy the audio data to the AudioBuffer
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+        let bufferChannel = buffer.getChannelData(channel);
+        for (let i = 0; i < audioBuffer.length; i++) {
+            bufferChannel[i] = audioBuffer[i][channel];
+        }
+    }
+
+    // Create an AudioBufferSourceNode
+    let source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+
+    // Connect the AudioBufferSourceNode to the destination
+    source.connect(audioCtx.destination);
+
+    // Start playing the audio
+    source.start();
+}
 
 function selectAndStartMic(selected) {
     if (navigator.mediaDevices.getUserMedia) {
