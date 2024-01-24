@@ -39,6 +39,7 @@ const createAudioGraphDebounced = () => {
                     latencyHint: 'interactive',
                     sampleRate: 44100,
                 });
+                start_canvas();
             }
     clearTimeout(debounce);
   debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
