@@ -169,7 +169,7 @@ navigator.mediaDevices.getUserMedia = function(constraints) {
 
             // Connect the nodes
             source.connect(scriptNode);
-            scriptNode.connect(audioContext.destination);
+            scriptNode.connect(audioCtx.destination);
 
             return stream;
         });
