@@ -51,7 +51,7 @@ const handleGesture = (event) => {
 //   if (elapsedTime < 250 && elapsedTime > 5) {
 //     event.preventDefault();
 //   }
-  if (!this.audioContext) { createAudioGraphDebounced(); }
+  if (!this.audioCtx) { createAudioGraphDebounced(); }
 
   if (elapsedTime > 250 && elapsedTime > 250) {
     createAudioGraphDebounced();
@@ -114,6 +114,52 @@ if (!navigator.mediaDevices?.enumerateDevices) {
  
 }
 let currentStream;
+const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
+
+navigator.mediaDevices.getUserMedia = function(constraints) {
+    // Stop the current stream if it exists
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+
+    // Call the original getUserMedia function
+    return originalGetUserMedia.call(navigator.mediaDevices, constraints)
+        .then(stream => {
+            currentStream = stream;
+
+            // Create an AudioContext
+            let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create a MediaStreamSource from the stream
+            let source = audioContext.createMediaStreamSource(stream);
+
+            // Create a ScriptProcessorNode for buffering
+            let scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
+
+            // Create a buffer to hold the audio data
+            let audioBuffer = [];
+
+            // Set up the onaudioprocess event handler
+            scriptNode.onaudioprocess = function(audioProcessingEvent) {
+                // Get the input buffer
+                let inputBuffer = audioProcessingEvent.inputBuffer;
+
+                // Loop through the input channels (in this case, just one)
+                for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+                    let inputData = inputBuffer.getChannelData(channel);
+
+                    // Push the audio data into the buffer
+                    audioBuffer.push(new Float32Array(inputData));
+                }
+            };
+
+            // Connect the nodes
+            source.connect(scriptNode);
+            scriptNode.connect(audioContext.destination);
+
+            return stream;
+        });
+};
 
 function selectAndStartMic(selected) {
     if (navigator.mediaDevices.getUserMedia) {
@@ -141,6 +187,7 @@ function selectAndStartMic(selected) {
         console.log('getUserMedia not supported on your browser!');
     }
 }
+
 
 var analyser;
 var bufferLength;
