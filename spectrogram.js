@@ -272,7 +272,7 @@ function callback(stream) {
     
 
     // Create a ScriptProcessorNode for buffering
-    let scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+    let scriptNode = audioCtx.createScriptProcessor(4096 * 60, 1, 1);
 
     // Create a buffer to hold the audio data
 
