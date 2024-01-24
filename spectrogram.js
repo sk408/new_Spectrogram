@@ -161,15 +161,9 @@ let audioBuffer = [];
 //                 }
 //             };
 
-<<<<<<< HEAD
-            // Connect the nodes
-            source.connect(scriptNode);
-            scriptNode.connect(this.audioCtx.destination);
-=======
 //             // Connect the nodes
 //             source.connect(scriptNode);
 //             scriptNode.connect(this.audioCtx.destination);
->>>>>>> eb54880 (Refactor audio recording and playback functionality)
 
 //             return stream;
 //         });
