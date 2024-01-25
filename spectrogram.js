@@ -321,20 +321,23 @@ function callback(stream) {
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
         // Get the input buffer
         let inputBuffer = audioProcessingEvent.inputBuffer;
-
+      
         // Loop through the input channels (in this case, just one)
         for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
-            let inputData = inputBuffer.getChannelData(channel);
-
-            // // Push the audio data into the buffer
-            // audioBuffer.push(new Float32Array(inputData));
-            audioBuffer = audioBuffer.concat(Array.from(inputData));
-            // if(inputData){
-            // audioBuffer[0] += (new Float32Array(inputData));
-            // }
-            // // audioBuffer[0] += inputData[0];
+          let inputData = inputBuffer.getChannelData(channel);
+      
+          // Create a new Float32Array to hold the audio data
+          let audioData = new Float32Array(inputData.length);
+      
+          // Copy the audio data into the Float32Array
+          for (let i = 0; i < inputData.length; i++) {
+            audioData[i] = inputData[i];
+          }
+      
+          // Push the audio data into the audioBuffer array
+          audioBuffer.push(audioData);
         }
-    };
+      };
 //     onaudioprocess = function(event) {
 //   var inputBuffer = event.inputBuffer;
 //   var outputBuffer = event.outputBuffer;
