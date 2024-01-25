@@ -270,6 +270,7 @@ function playAudioBuffer(audioBuffer) {
     source.start();
 }
 
+
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
@@ -314,13 +315,32 @@ function callback(stream) {
             let inputData = inputBuffer.getChannelData(channel);
 
             // // Push the audio data into the buffer
-            audioBuffer.push(new Float32Array(inputData));
+            // audioBuffer.push(new Float32Array(inputData));
+            audioBuffer = audioBuffer.concat(Array.from(inputData));
             // if(inputData){
             // audioBuffer[0] += (new Float32Array(inputData));
             // }
             // // audioBuffer[0] += inputData[0];
         }
     };
+//     onaudioprocess = function(event) {
+//   var inputBuffer = event.inputBuffer;
+//   var outputBuffer = event.outputBuffer;
+//   var audioBuffer = [];
+
+//   // Loop through each channel of the input buffer
+//   for (var channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+//     // Get the audio data for the current channel
+//     var channelData = inputBuffer.getChannelData(channel);
+
+//     // Concatenate the audio data from the current channel with the previous channel data
+//     audioBuffer = audioBuffer.concat(channelData);
+//   }
+
+//   // Replace the current value with the new concatenated data
+//   audioBuffer.splice(0, audioBuffer.length, audioBuffer);
+
+// };
 
     // Connect the nodes
     source.connect(analyser);
