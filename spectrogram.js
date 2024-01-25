@@ -195,30 +195,31 @@ function selectAndStartMic(selected) {
         console.log('getUserMedia not supported on your browser!');
     }
 }
-function playAudioBuffer(audioBuffer) {
-    // Create an AudioBuffer
-    console.log(audioBuffer.length);
-    let buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 30, audioCtx.sampleRate);
+// function playAudioBuffer(audioBuffer) {
+//     // Create an AudioBuffer
+//     console.log(audioBuffer.length);
+//     // let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
+//     let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
 
-    // Copy the audio data to the AudioBuffer
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-        let bufferChannel = buffer.getChannelData(channel);
-        // for (let i = 0; i < audioBuffer[0].length; i++) {
-            // bufferChannel[i] = audioBuffer[channel][i];
-            bufferChannel[0] = audioBuffer[0];
-        // }
-    }
+//     // Copy the audio data to the AudioBuffer
+//     for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+//         let bufferChannel = buffer.getChannelData(channel);
+//         for (let i = 0; i < audioBuffer[0].length; i++) {
+//             bufferChannel[i] = audioBuffer[channel][i];
+//             // bufferChannel[0] = audioBuffer[0];
+//         }
+//     }
 
-    // Create an AudioBufferSourceNode
-    let source = audioCtx.createBufferSource();
-    source.buffer = buffer;
+//     // Create an AudioBufferSourceNode
+//     let source = audioCtx.createBufferSource();
+//     source.buffer = buffer;
 
-    // Connect the AudioBufferSourceNode to the destination
-    source.connect(audioCtx.destination);
+//     // Connect the AudioBufferSourceNode to the destination
+//     source.connect(audioCtx.destination);
 
-    // Start playing the audio
-    source.start();
-}
+//     // Start playing the audio
+//     source.start();
+// }
 
 var analyser;
 var bufferLength;
@@ -243,6 +244,31 @@ var i_min;
 var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
 
+function playAudioBuffer(audioBuffer) {
+    // Create an AudioBuffer
+    console.log(audioBuffer.length);
+    // let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
+    let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
+
+    // Copy the audio data to the AudioBuffer
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+        let bufferChannel = buffer.getChannelData(channel);
+        for (let i = 0; i < audioBuffer[0].length; i++) {
+            bufferChannel[i] = audioBuffer[i];
+            // bufferChannel[0] = audioBuffer[0];
+        }
+    }
+
+    // Create an AudioBufferSourceNode
+    let source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+
+    // Connect the AudioBufferSourceNode to the destination
+    source.connect(audioCtx.destination);
+
+    // Start playing the audio
+    source.start();
+}
 
 function callback(stream) {
     if (!audioCtx) {
@@ -252,7 +278,7 @@ function callback(stream) {
         });
 
     }
-    audioBuffer[0] = "";
+    // audioBuffer[0] = "";
 
     const source = audioCtx.createMediaStreamSource(stream);
 
@@ -288,11 +314,11 @@ function callback(stream) {
             let inputData = inputBuffer.getChannelData(channel);
 
             // // Push the audio data into the buffer
-            // audioBuffer.push(new Float32Array(inputData));
-            if(inputData){
-            audioBuffer[0] += (new Float32Array(inputData));
-            }
-            // audioBuffer[0] += inputData[0];
+            audioBuffer.push(new Float32Array(inputData));
+            // if(inputData){
+            // audioBuffer[0] += (new Float32Array(inputData));
+            // }
+            // // audioBuffer[0] += inputData[0];
         }
     };
 
