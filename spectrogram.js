@@ -203,9 +203,10 @@ function playAudioBuffer(audioBuffer) {
     // Copy the audio data to the AudioBuffer
     for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
         let bufferChannel = buffer.getChannelData(channel);
-        for (let i = 0; i < audioBuffer[0].length; i++) {
-            bufferChannel[i] = audioBuffer[channel][i];
-        }
+        // for (let i = 0; i < audioBuffer[0].length; i++) {
+            // bufferChannel[i] = audioBuffer[channel][i];
+            bufferChannel[0] = audioBuffer[0];
+        // }
     }
 
     // Create an AudioBufferSourceNode
@@ -286,8 +287,8 @@ function callback(stream) {
             let inputData = inputBuffer.getChannelData(channel);
 
             // // Push the audio data into the buffer
-            audioBuffer.push(new Float32Array(inputData));
-            // audioBuffer[0] += (new Float32Array(inputData));
+            // audioBuffer.push(new Float32Array(inputData));
+            audioBuffer[0] += (new Float32Array(inputData));
             // audioBuffer[0] += inputData[0];
         }
     };
