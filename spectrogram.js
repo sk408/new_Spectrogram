@@ -286,8 +286,8 @@ function callback(stream) {
             let inputData = inputBuffer.getChannelData(channel);
 
             // // Push the audio data into the buffer
-            // audioBuffer.push(new Float32Array(inputData));
-            audioBuffer[0] += (new Float32Array(inputData));
+            audioBuffer.push(new Float32Array(inputData));
+            // audioBuffer[0] += (new Float32Array(inputData));
             // audioBuffer[0] += inputData[0];
         }
     };
