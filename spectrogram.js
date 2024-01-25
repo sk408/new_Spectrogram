@@ -244,32 +244,44 @@ var i_min;
 var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
 
+// function playAudioBuffer(audioBuffer) {
+//     // Create an AudioBuffer
+//     console.log(audioBuffer.length);
+//     // let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
+//     let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
+
+//     // Copy the audio data to the AudioBuffer
+//     for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+//         let bufferChannel = buffer.getChannelData(channel);
+//         for (let i = 0; i < audioBuffer[0].length; i++) {
+//             bufferChannel[i] = audioBuffer[i];
+//             // bufferChannel[0] = audioBuffer[0];
+//         }
+//     }
+
+//     // Create an AudioBufferSourceNode
+//     let source = audioCtx.createBufferSource();
+//     source.buffer = buffer;
+
+//     // Connect the AudioBufferSourceNode to the destination
+//     source.connect(audioCtx.destination);
+
+//     // Start playing the audio
+//     source.start();
+// }
 function playAudioBuffer(audioBuffer) {
-    // Create an AudioBuffer
-    console.log(audioBuffer.length);
-    // let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
-    let buffer = audioCtx.createBuffer(1, audioBuffer[0].length, audioCtx.sampleRate);
-
-    // Copy the audio data to the AudioBuffer
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-        let bufferChannel = buffer.getChannelData(channel);
-        for (let i = 0; i < audioBuffer[0].length; i++) {
-            bufferChannel[i] = audioBuffer[i];
-            // bufferChannel[0] = audioBuffer[0];
-        }
-    }
-
     // Create an AudioBufferSourceNode
     let source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-
+  
+    // Copy the audio data from the audioBuffer parameter into the buffer variable
+    source.buffer = audioBuffer;
+  
     // Connect the AudioBufferSourceNode to the destination
     source.connect(audioCtx.destination);
-
+  
     // Start playing the audio
     source.start();
-}
-
+  }
 
 function callback(stream) {
     if (!audioCtx) {
