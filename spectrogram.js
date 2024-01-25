@@ -252,7 +252,8 @@ function callback(stream) {
         });
 
     }
-
+    audioBuffer = [];
+    
     const source = audioCtx.createMediaStreamSource(stream);
 
     const analyser = audioCtx.createAnalyser();
