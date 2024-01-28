@@ -172,6 +172,10 @@ function playAudioBuffer(samples) {
     const source = audioCtx.createBufferSource();
     source.buffer = finalBuffer;
     source.connect(audioCtx.destination);
+    console.log(audioCtx.destination)
+    console.log(audioCtx.state)
+    console.log(finalBuffer)
+
     source.start();
 }
 function callback(stream) {
