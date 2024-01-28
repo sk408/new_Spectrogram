@@ -160,20 +160,20 @@ var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_rig
 
 
 function playAudioBuffer(samples) {
-    const totalNumberOfSamples = samples.length;
+    const samplesFlat = samples.flat();
+    const totalNumberOfSamples = samplesFlat.length;
     const finalBuffer = audioCtx.createBuffer(1, totalNumberOfSamples, audioCtx.sampleRate);
 
-    for (let i = 0; i < samples.length; ++i) {
-      const channelData = finalBuffer.getChannelData(0);
-      channelData[i] = samples[i];
+    const channelData = finalBuffer.getChannelData(0); // Moved outside the loop
+    for (let i = 0; i < samplesFlat.length; ++i) {
+      channelData[i] = samplesFlat[i];
     }
 
     const source = audioCtx.createBufferSource();
     source.buffer = finalBuffer;
     source.connect(audioCtx.destination);
     source.start();
-  }
-
+}
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
