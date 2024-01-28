@@ -161,6 +161,7 @@ var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_rig
 
 function playAudioBuffer(samples) {
     const samplesFlat = samples.flat();
+    console.log(samplesFlat);
     const totalNumberOfSamples = samplesFlat.length;
     const finalBuffer = audioCtx.createBuffer(1, totalNumberOfSamples, audioCtx.sampleRate);
 
