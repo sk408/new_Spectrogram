@@ -1,4 +1,4 @@
-// set up basic variables for app
+
 var message = "  ";
 var message1 = "  ";
 var message2 = "  ";
@@ -9,11 +9,11 @@ var message4 = "  ";
 const canvas = document.querySelector('.canvas');
 const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
 const mainSection = document.querySelector('.main-controls');
-var border_canvas_plot_left ;
+var border_canvas_plot_left;
 
-var border_canvas_plot_right ;
-var border_canvas_plot_bottom ;
-var border_canvas_plot_top ;
+var border_canvas_plot_right;
+var border_canvas_plot_bottom;
+var border_canvas_plot_top;
 
 applyOrientation();
 
@@ -24,10 +24,10 @@ var stop_sound = 0;
 var max_intensity;
 var sensibility;
 var sensibility_temp;
-// disable stop button while not recording
 
 
-// visualiser setup - create web audio api context and canvas
+
+
 let animationId;
 
 let audioCtx;
@@ -39,8 +39,8 @@ const createAudioGraphDebounced = () => {
             sampleRate: 44100,
         });
     }
-  clearTimeout(debounce);
-  debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
+    clearTimeout(debounce);
+    debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
 };
 
 let touchstartX = 0;
@@ -48,61 +48,61 @@ let touchstartY = 0;
 let time = 0;
 
 const handleGesture = (event) => {
-  const elapsedTime = new Date().getTime() - time;
-  const touchendX = event.changedTouches[0].screenX;
-  const touchendY = event.changedTouches[0].screenY;
-  const dx = touchendX - touchstartX;
-  const dy = touchendY - touchstartY;
-  const dist = Math.sqrt(dx * dx + dy * dy); // distance
-//   if (elapsedTime < 250 && elapsedTime > 5) {
-//     event.preventDefault();
-//   }
- 
-  if (elapsedTime > 250 && elapsedTime > 250) {
-    createAudioGraphDebounced();
-  }
+    const elapsedTime = new Date().getTime() - time;
+    const touchendX = event.changedTouches[0].screenX;
+    const touchendY = event.changedTouches[0].screenY;
+    const dx = touchendX - touchstartX;
+    const dy = touchendY - touchstartY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+
+
+
+    if (elapsedTime > 250 && elapsedTime > 250) {
+        createAudioGraphDebounced();
+    }
 };
 function onKeyDown(e) {
-  if (e.key === " ")
-    createAudioGraphDebounced();
+    if (e.key === " ")
+        createAudioGraphDebounced();
 }
 
 canvas.addEventListener('mousedown', function (event) {
-  if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
-    createAudioGraphDebounced();
-  }
+    if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
+        createAudioGraphDebounced();
+    }
 });
 canvas.addEventListener("keydown", onKeyDown);
 canvas.addEventListener('touchstart', (event) => {
-  touchstartX = event.changedTouches[0].screenX;
-  touchstartY = event.changedTouches[0].screenY;
-  time = new Date().getTime();
+    touchstartX = event.changedTouches[0].screenX;
+    touchstartY = event.changedTouches[0].screenY;
+    time = new Date().getTime();
 });
 canvas.addEventListener('touchend', handleGesture);
 
 
 if (!navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
-  } else {
+} else {
 
     navigator.mediaDevices.enumerateDevices()
-    .then(devices => {
-        this.mics = devices.filter(device => device.kind === 'audioinput');
+        .then(devices => {
+            this.mics = devices.filter(device => device.kind === 'audioinput');
 
-        // Populate the microphone dropdown
-        const microphoneSelect = document.getElementById('microphone');
-        this.mics.forEach((mic, index) => {
-            const option = document.createElement('option');
-            option.value = mic.deviceId;
-            option.text = mic.label || `Microphone ${index + 1}`;
-            microphoneSelect.appendChild(option);
-        });
 
-        // Select the first microphone by default
-        this.selectAndStartMic(this.mics[0]?.deviceId);
-    })
-    .catch(err => console.log(err));
- 
+            const microphoneSelect = document.getElementById('microphone');
+            this.mics.forEach((mic, index) => {
+                const option = document.createElement('option');
+                option.value = mic.deviceId;
+                option.text = mic.label || `Microphone ${index + 1}`;
+                microphoneSelect.appendChild(option);
+            });
+
+
+            this.selectAndStartMic(this.mics[0]?.deviceId);
+        })
+        .catch(err => console.log(err));
+
 }
 let currentStream;
 
@@ -112,19 +112,19 @@ function selectAndStartMic(selected) {
     if (navigator.mediaDevices.getUserMedia) {
         console.log('getUserMedia supported.');
 
-        // Stop the current stream if it exists
+
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
         if (animationId) {
             cancelAnimationFrame(animationId);
         }
-        let onSuccess = function(stream) {
+        let onSuccess = function (stream) {
             currentStream = stream;
             callback(stream);
         }
 
-        let onError = function(err) {
+        let onError = function (err) {
             console.log('The following error occured: ' + err);
         }
 
@@ -166,17 +166,17 @@ async function playAudioBuffer(samples) {
 
 function stopRecording() {
     return new Promise(resolve => {
-      audioRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        resolve({ audioBlob, audioUrl, audio });
-      };
-  
-      audioRecorder.stop();
+        audioRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            resolve({ audioBlob, audioUrl, audio });
+        };
+
+        audioRecorder.stop();
     });
-  }
-  
+}
+
 
 let audioRecorder;
 let audioChunks = [];
@@ -189,7 +189,7 @@ function callback(stream) {
         });
 
     }
-    // audioBuffer[0] = "";
+
 
     const source = audioCtx.createMediaStreamSource(stream);
 
@@ -200,53 +200,20 @@ function callback(stream) {
     bufferLength = analyser.frequencyBinCount;
 
     dataTime = new Float32Array(bufferLength * 2);
-    //const dataFrec = new Float32Array(bufferLength);
+
     dataFrec = new Float32Array(bufferLength);
     const sr = audioCtx.sampleRate;
 
-    //document.getElementById("console4").innerHTML = "Velocidad de Muestreo en Hz = " + sr.toString();
+
     message0 = "Sampling rate: " + sr.toString() + " Hz";
-    
-    //analyser.connect(audioCtx.destination);
-    
-
-    // Create a ScriptProcessorNode for buffering
     audioRecorder = new MediaRecorder(stream);
-    // let scriptNode = audioCtx.createScriptProcessor(16384, 1, 1);
-
-    // Create a buffer to hold the audio data
-
-    // Set up the onaudioprocess event handler
     audioRecorder.ondataavailable = e => {
         audioChunks.push(e.data);
-      };
-    
-      audioRecorder.start();
-
-    // scriptNode.onaudioprocess = function(audioProcessingEvent) {
-    //     const inputBuffer = audioProcessingEvent.inputBuffer;
-    //     const inputData = [];
-    
-    //     for (let ch = 0; ch < inputBuffer.numberOfChannels; ++ch) {
-    //       inputData.push(inputBuffer.getChannelData(ch));
-    //     }
-    
-    //     // if (startTime === null) {
-    //     //   startTime = performance.now();
-    //     // }
-    
-    //     audioBuffer.push(inputData);
-    
-    //     // if ((performance.now() - startTime) > MINIMUM_RECORDING_DURATION_MS || audioBuffersAccumulator.length >= NUM_CHUNKS_TO_COMBINE) {
-    //     //   stopRecording();
-    //     // }
-    //   };
-    
-    // Connect the nodes
+    };
+    audioRecorder.start();
     source.connect(analyser);
-    // analyser.connect(scriptNode);
-    analyser.connect(audioCtx.destination);
-    // scriptNode.connect(audioCtx.destination);
+    // analyser.connect(audioCtx.destination);
+
 
 
     Plot();
@@ -280,7 +247,7 @@ function callback(stream) {
         const sampled_time = my_x.length / sr * 1000;
 
 
-        //document.getElementById("console5").innerHTML = "Número de Muestras en Tiempo: " + my_x.length.toString() + " Tiempo Muestreado = " + (Math.round(sampled_time)).toString();
+
 
         message1 = "Buffer size in time domain: " + my_x.length.toString();
         message1 += "\nSampled time = " + (Math.round(sampled_time)).toString() + " ms";
@@ -300,7 +267,7 @@ function callback(stream) {
         BH7[5] = -0.00077658482522;
         BH7[6] = 0.00001388721735;
         for (var i = 0; i < my_x.length; i++) {
-            //if (document.getElementById("window").checked == true) {
+
             if (window == "None") {
                 my_x[i] = (my_x[i] - mean);
             } else if (window == "Cosine") {
@@ -326,7 +293,7 @@ function callback(stream) {
 
             max_intensity = -100;
             for (var i = 1; i < my_x.length / 2; i += 1) {
-                //my_X_abs[i] = 10 * Math.log10((fft[i].re * fft[i].re + fft[i].im * fft[i].im)) - baseline - 20;
+
                 my_X_abs[i] = 10 * Math.log10((fft[i].re * fft[i].re + fft[i].im * fft[i].im)) - 20;
                 if (my_X_abs[i] > max_intensity) max_intensity = my_X_abs[i];
             }
@@ -356,10 +323,10 @@ function callback(stream) {
         canvasCtx.fillStyle = 'lightblue';
         canvasCtx.fillRect(border_canvas_plot_top, border_canvas_plot_top, canvas.width / 10 + border_canvas_plot_left - 2 * border_canvas_plot_top, canvas.height / 10 - border_canvas_plot_top);
         canvasCtx.fillStyle = 'black';
-        canvasCtx.font =getFont(25);  
+        canvasCtx.font = getFont(25);
 
         var centro = (border_canvas_plot_top + canvas.height / 10) / 2;
-        //canvasCtx.fillText(Math.round(frec_max1).toString() + " Hz", canvas.width / 40, centro);
+
         canvasCtx.textAlign = 'right';
         canvasCtx.fillText(Math.round(frec_max1).toString() + " Hz", canvas.width / 8, centro);
 
@@ -377,7 +344,7 @@ function callback(stream) {
 
         PlotSpectro1();
 
-       animationId = requestAnimationFrame(Plot);
+        animationId = requestAnimationFrame(Plot);
     }
 }
 
@@ -432,33 +399,33 @@ const HSLToRGB = (h, s, l) => {
 
 function PlotMic() {
 
-    var scale_v = canvas.height/760;
+    var scale_v = canvas.height / 760;
     var atenuacion = .4;
     f_Nyquist = audioCtx.sampleRate / 2;
     canvasCtx.lineWidth = 1;
 
 
     canvasCtx.fillStyle = '#003B5C';
-    //canvasCtx.fillStyle = 'green';
+
     canvasCtx.fillRect(canvas.width / 10 + border_canvas_plot_left, 0, .9 * canvas.width - border_canvas_plot_right - border_canvas_plot_left, canvas.height / 10 + border_canvas_plot_top);
 
     canvasCtx.beginPath();
     let x = canvas.width / 10 + border_canvas_plot_left;
 
     canvasCtx.strokeStyle = 'white';
-    var centro = ( canvas.height / 10 + border_canvas_plot_top) / 2;
+    var centro = (canvas.height / 10 + border_canvas_plot_top) / 2;
     for (let i = 0; i < my_x.length; i++) {
 
         var y = my_x[i] * atenuacion + centro;
-        
+
 
         if (i == 0) {
             canvasCtx.moveTo(x, centro);
         } else {
-            y = centro +(y-centro) * scale_v; // scale to screen size
-            if (y > canvas.height / 10 + border_canvas_plot_top- 1) {
-            y = canvas.height / 10 + border_canvas_plot_top - 1;
-        }
+            y = centro + (y - centro) * scale_v;
+            if (y > canvas.height / 10 + border_canvas_plot_top - 1) {
+                y = canvas.height / 10 + border_canvas_plot_top - 1;
+            }
             canvasCtx.lineTo(x, y);
         }
 
@@ -469,14 +436,14 @@ function PlotMic() {
 }
 
 function PlotFFT() {
-    var scale_h = canvas.width/1440;
+    var scale_h = canvas.width / 1440;
 
     canvasCtx.lineWidth = 1;
     canvasCtx.strokeStyle = 'hsl(' + 360 * 0 + ',100%,50%)';
 
     canvasCtx.fillStyle = '#003B5C';
-    //canvasCtx.fillStyle = 'green';
-    canvasCtx.fillRect(0, canvas.height / 10 + border_canvas_plot_top, .9 * canvas.width / 10 , .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top);
+
+    canvasCtx.fillRect(0, canvas.height / 10 + border_canvas_plot_top, .9 * canvas.width / 10, .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top);
 
     var y;
     let Y0 = canvas.height / 10 + border_canvas_plot_top;
@@ -495,7 +462,7 @@ function PlotFFT() {
 
             var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
         }
-        scale_h = canvas.width/1440;
+        scale_h = canvas.width / 1440;
         let x = -my_X_abs[i] * scale_h + .9 * canvas.width / 10;
 
         var value = my_X_abs[i] / (sensibility);
@@ -539,7 +506,7 @@ function PlotFFT() {
 
     }
     canvasCtx.stroke();
-    //Draw vertical line
+
     if (max_intensity > sensibility) {
         sensibility_temp = max_intensity;
         ColormapMarks();
@@ -550,7 +517,7 @@ function PlotFFT() {
     document.getElementById("output_sensibility").innerHTML = Math.floor(sensibility_temp);
     document.getElementById("sensibility").value = Math.floor(sensibility_temp);
 
-    canvasCtx.moveTo(-sensibility_temp *scale_h + .9 * canvas.width / 10, Y0);
+    canvasCtx.moveTo(-sensibility_temp * scale_h + .9 * canvas.width / 10, Y0);
     canvasCtx.lineTo(-sensibility_temp * scale_h + .9 * canvas.width / 10, Y0 + deltaY0);
     canvasCtx.stroke();
 }
@@ -621,13 +588,13 @@ function PlotSpectro1() {
 
     }
 
-    canvasCtx.font =getFont(10);  
+    canvasCtx.font = getFont(10);
 
 }
 
 
 function YaxisMarks() {
-    
+
     canvasCtx.fillStyle = 'white';
     let X0 = canvas.width / 10 + border_canvas_plot_left;
     let Y0 = canvas.height / 10 + border_canvas_plot_top;
@@ -635,7 +602,7 @@ function YaxisMarks() {
 
     canvasCtx.fillRect(.9 * canvas.width / 10, Y0 - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, Y0 + deltaY0);
     canvasCtx.fillStyle = "black";
-    canvasCtx.font =getFont(10);    
+    canvasCtx.font = getFont(10);
 
     canvasCtx.textAlign = 'right';
 
@@ -647,7 +614,7 @@ function YaxisMarks() {
             var y = Y0 + deltaY0 - deltaY0 * (Yaxis[j] - f_min) / (f_max - f_min);
             if (Yaxis[j] <= f_max) {
                 canvasCtx.textBaseline = "middle";
-                //canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - 1. * border_canvas_plot_left, y);
+
                 canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
             }
             canvasCtx.strokeStyle = "black";
@@ -668,16 +635,16 @@ function YaxisMarks() {
 
 
             var mel_i = 1127.01048 * Math.log(Yaxis[j] / 700 + 1)
-                //console.log(mel_i + " " + Yaxis[j])
+
             var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
             var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
             var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
 
 
-            //var y = y0 - deltaY0 * (Math.log(Yaxis[i]) - Math.log(f_min)) / (Math.log(f_max) - Math.log(f_min));
+
             if (Yaxis[j] <= f_max) {
                 canvasCtx.textBaseline = "middle";
-                //canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - 1. * border_canvas_plot_left, y);
+
                 canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
             }
             canvasCtx.strokeStyle = "black";
@@ -697,41 +664,41 @@ function YaxisMarks() {
 
 
 
-window.onresize = function(event) {
-        applyOrientation();
-    }
+window.onresize = function (event) {
+    applyOrientation();
+}
 
 function applyOrientation() {
     if (window.innerHeight > window.innerWidth) {
-        //alert("You are now in portrait");
+
         canvas.width = window.innerWidth;
-        //canvas.height = (window.innerHeight);
-        canvas.height = canvas.width*400/700;
-        //YaxisMarks();
+
+        canvas.height = canvas.width * 400 / 700;
+
     } else {
-        //alert("You are now in landscape");
+
         canvas.width = window.innerWidth;
         canvas.height = (window.innerHeight);
-        //YaxisMarks();
-    }
-   border_canvas_plot_left = canvas.width / 20;
-border_canvas_plot_right = canvas.width / 10;
 
-var scale_v = canvas.height/760;
- border_canvas_plot_bottom = 80*scale_v;
- border_canvas_plot_top = 10*scale_v;
-plot_colormap();
-var my_element = document.getElementById("my_element");
+    }
+    border_canvas_plot_left = canvas.width / 20;
+    border_canvas_plot_right = canvas.width / 10;
+
+    var scale_v = canvas.height / 760;
+    border_canvas_plot_bottom = 80 * scale_v;
+    border_canvas_plot_top = 10 * scale_v;
+    plot_colormap();
+    var my_element = document.getElementById("my_element");
 
     my_element.scrollIntoView({
-  behavior: "smooth",
-  block: "start",
-  inline: "nearest"
-});
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest"
+    });
 
 }
- 
-    
+
+
 
 function DisplayMultiLineAlert() {
     var newLine = "\r\n"
@@ -743,7 +710,7 @@ function DisplayMultiLineAlert() {
     message += newLine;
     message += message3;
     message4 = "Screen resolution is: " + screen.width + "x" + screen.height + " " + window.screen.availWidth +
-     " " + window.screen.availHeight + " " + window.innerWidth + " " + window.innerHeight + " " + canvas.width + " " + canvas.height;
+        " " + window.screen.availHeight + " " + window.innerWidth + " " + window.innerHeight + " " + canvas.width + " " + canvas.height;
     message += newLine;
     message += message4;
     message += newLine;
@@ -788,7 +755,7 @@ function ColormapMarks() {
 
 
     canvasCtx.fillStyle = "black";
-    canvasCtx.font =getFont(20);  
+    canvasCtx.font = getFont(20);
 
     canvasCtx.textBaseline = "middle";
     var dB = Math.max(sensibility_temp, max_intensity);
@@ -798,20 +765,20 @@ function ColormapMarks() {
     canvasCtx.fillText(Math.floor(.5 * dB) + " dB", x0, Y0 + .5 * deltaY0)
     canvasCtx.fillText(Math.floor(.25 * dB) + " dB", x0, Y0 + .75 * deltaY0)
     canvasCtx.fillText(0 + " dB", x0, Y0 + deltaY0)
-    
+
 
     canvasCtx.textAlign = 'left';
-    canvasCtx.fillText("Time", canvas.width / 2, canvas.height - .5 * border_canvas_plot_bottom );
-    canvasCtx.fillText("Loudness (dB)", 10, canvas.height - .5 * border_canvas_plot_bottom );
-    canvasCtx.fillText("Color", canvas.width - border_canvas_plot_right, canvas.height - .5 * border_canvas_plot_bottom );
+    canvasCtx.fillText("Time", canvas.width / 2, canvas.height - .5 * border_canvas_plot_bottom);
+    canvasCtx.fillText("Loudness (dB)", 10, canvas.height - .5 * border_canvas_plot_bottom);
+    canvasCtx.fillText("Color", canvas.width - border_canvas_plot_right, canvas.height - .5 * border_canvas_plot_bottom);
 
 
 }
 
 
 function getFont(s) {
-    var fontBase = 1000;   
-    var ratio = s / fontBase;   
-    var size = canvas.width * ratio;   
-    return (size|0) + 'px sans-serif'; 
+    var fontBase = 1000;
+    var ratio = s / fontBase;
+    var size = canvas.width * ratio;
+    return (size | 0) + 'px sans-serif';
 }
