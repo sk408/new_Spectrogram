@@ -109,7 +109,6 @@ function selectAndStartMic(selected) {
     }
 }
 
-var analyser;
 var bufferLength;
 var dataTime;
 var dataFrec;
@@ -128,7 +127,6 @@ var i_min;
 var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
 
-
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
@@ -140,7 +138,7 @@ function callback(stream) {
 
     const source = audioCtx.createMediaStreamSource(stream);
 
-    analyser = audioCtx.createAnalyser();
+    const analyser = audioCtx.createAnalyser();
     analyser.fftSize = fftSize;
     analyser.minDecibels = -40;
 
@@ -152,13 +150,15 @@ function callback(stream) {
     const sr = audioCtx.sampleRate;
 
     source.connect(analyser);
-    
+    // analyser.connect(audioCtx.destination);
 
     Plot();
-}
 
     function Plot() {
-        
+        analyser.fftSize = fftSize;
+        bufferLength = analyser.frequencyBinCount;
+        dataTime = new Uint8Array(bufferLength * 2);
+        dataFrec = new Float32Array(bufferLength);
         YaxisMarks();
 
         colormap = document.getElementById("colormap").value;
@@ -166,10 +166,10 @@ function callback(stream) {
         f_max = parseFloat(document.getElementById("f_max").value);
 
         bin_width = parseInt(document.getElementById("speed").value);
-        
+        // startTime = performance.now();
 
-        
-        
+        analyser.getByteTimeDomainData(dataTime);
+        analyser.getFloatFrequencyData(dataFrec)
 
         counter += 1;
 
@@ -261,6 +261,8 @@ function callback(stream) {
 
         animationId = requestAnimationFrame(Plot);
     }
+}
+
 function myFFT(signal) {
     if (signal.length == 1)
         return signal;
