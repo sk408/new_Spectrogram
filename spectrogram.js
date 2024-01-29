@@ -608,59 +608,71 @@ function PlotSpectro1() {
 }
 
 function YaxisMarks() {
-    const axisStartX = canvas.width / 10 + border_canvas_plot_left;
-    const axisStartY = canvas.height / 10 + border_canvas_plot_top;
-    const axisHeight = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
 
-    // Draw the axis background
     canvasCtx.fillStyle = 'white';
-    canvasCtx.fillRect(.9 * canvas.width / 10, axisStartY - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, axisStartY + axisHeight);
+    let X0 = canvas.width / 10 + border_canvas_plot_left;
+    let Y0 = canvas.height / 10 + border_canvas_plot_top;
+    var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
+
+    canvasCtx.fillRect(.9 * canvas.width / 10, Y0 - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, Y0 + deltaY0);
     canvasCtx.fillStyle = "black";
     canvasCtx.font = getFont(10);
+
     canvasCtx.textAlign = 'right';
 
-    const scale = document.getElementById("scale").value;
-    const Yaxis = getYaxisValues(scale);
-    const mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
-    const mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
 
-    Yaxis.forEach(value => {
-        const y = calculateYPosition(value, scale, axisStartY, axisHeight, mel_i_min, mel_i_max);
-        if (value <= f_max) {
-            drawYAxisMark(axisStartX, y, value.toString() + " Hz");
+    if (document.getElementById("scale").value == "Linear") {
+        var Yaxis = new Array;
+        Yaxis = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000];
+        for (var j = 0; j < Yaxis.length; j++) {
+            var y = Y0 + deltaY0 - deltaY0 * (Yaxis[j] - f_min) / (f_max - f_min);
+            if (Yaxis[j] <= f_max) {
+                canvasCtx.textBaseline = "middle";
+
+                canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
+            }
+            canvasCtx.strokeStyle = "black";
+            canvasCtx.beginPath();
+            if (Yaxis[j] <= f_max) {
+                canvasCtx.moveTo(X0, y);
+                canvasCtx.lineTo(X0 - 4, y);
+                canvasCtx.moveTo(.9 * canvas.width / 10, y);
+                canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
+            }
+            canvasCtx.stroke();
         }
-    });
-}
+    } else if (document.getElementById("scale").value == "Mel") {
+        var Yaxis = new Array;
+        Yaxis = [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
+        let y0 = canvas.height - border_canvas_plot_bottom;
+        for (var j = 0; j < Yaxis.length; j++) {
 
-function getYaxisValues(scale) {
-    if (scale === "Linear") {
-        return [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000];
-    } else if (scale === "Mel") {
-        return [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
+
+            var mel_i = 1127.01048 * Math.log(Yaxis[j] / 700 + 1)
+
+            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
+            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
+            var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+
+
+
+            if (Yaxis[j] <= f_max) {
+                canvasCtx.textBaseline = "middle";
+
+                canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
+            }
+            canvasCtx.strokeStyle = "black";
+            canvasCtx.beginPath();
+            if (Yaxis[j] <= f_max) {
+                canvasCtx.moveTo(X0, y);
+                canvasCtx.lineTo(X0 - 4, y);
+                canvasCtx.moveTo(.9 * canvas.width / 10, y);
+
+                canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
+            }
+            canvasCtx.stroke();
+        }
     }
-    return [];
-}
-
-function calculateYPosition(value, scale, axisStartY, axisHeight, mel_i_min, mel_i_max) {
-    if (scale === "Linear") {
-        return axisStartY + axisHeight - axisHeight * (value - f_min) / (f_max - f_min);
-    } else if (scale === "Mel") {
-        const mel_i = 1127.01048 * Math.log(value / 700 + 1);
-        return axisStartY + axisHeight - axisHeight * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-    }
-    return axisStartY;
-}
-
-function drawYAxisMark(axisStartX, y, text) {
-    canvasCtx.textBaseline = "middle";
-    canvasCtx.fillText(text, axisStartX - border_canvas_plot_top, y);
-    canvasCtx.strokeStyle = "black";
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(axisStartX, y);
-    canvasCtx.lineTo(axisStartX - 4, y);
-    canvasCtx.moveTo(.9 * canvas.width / 10, y);
-    canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
-    canvasCtx.stroke();
 }
 
 
