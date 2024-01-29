@@ -165,7 +165,7 @@ async function playAudioBuffer() {
     const result = await stopRecording();
     if (result) {
         const { audio } = result;
-        console.log(`Playing audio. ${audio.duration} seconds long. ${audio.src} bytes`);
+        console.log(`Playing audio. ${audio.duration} seconds long. ${audio.src}`);
         audio.play();
     } else {
         console.error('No audio to play.');
@@ -174,7 +174,6 @@ async function playAudioBuffer() {
 
 function stopRecording() {
     return new Promise((resolve, reject) => {
-        // Check if audioRecorder is defined and in a "recording" state
         if (!audioRecorder || audioRecorder.state !== "recording") {
             console.error("audioRecorder is not recording or not defined.");
             reject("audioRecorder is not recording or not defined.");
@@ -182,10 +181,27 @@ function stopRecording() {
         }
 
         audioRecorder.onstop = () => {
+            if (audioChunks.length === 0) {
+                console.error("No audio data recorded.");
+                reject("No audio data recorded.");
+                return;
+            }
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            if (audioBlob.size === 0) {
+                console.error("Audio blob is empty.");
+                reject("Audio blob is empty.");
+                return;
+            }
             const audioUrl = URL.createObjectURL(audioBlob);
             const audio = new Audio(audioUrl);
-            resolve({ audioBlob, audioUrl, audio });
+            audio.onloadedmetadata = () => {
+                if (audio.duration === 0) {
+                    console.error("Audio duration is 0.");
+                    reject("Audio duration is 0.");
+                } else {
+                    resolve({ audioBlob, audioUrl, audio });
+                }
+            };
         };
 
         console.log("Stopping audioRecorder");
