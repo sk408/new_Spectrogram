@@ -244,7 +244,7 @@ function callback(stream) {
     
     // Connect the nodes
     source.connect(analyser);
-    analyser.connect(scriptNode);
+    // analyser.connect(scriptNode);
     analyser.connect(audioCtx.destination);
     // scriptNode.connect(audioCtx.destination);
 
