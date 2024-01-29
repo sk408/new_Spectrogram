@@ -218,7 +218,6 @@ function callback(stream) {
     dataFrec = new Float32Array(bufferLength);
     const sr = audioCtx.sampleRate;
 
-
     // message0 = "Sampling rate: " + sr.toString() + " Hz";
     // audioRecorder = new MediaRecorder(stream);
     // console.log(audioRecorder.state);
@@ -229,8 +228,6 @@ function callback(stream) {
     // audioRecorder.start(1000);
     source.connect(analyser);
     // analyser.connect(audioCtx.destination);
-
-
 
     Plot();
 
@@ -248,21 +245,14 @@ function callback(stream) {
         bin_width = parseInt(document.getElementById("speed").value);
         // startTime = performance.now();
 
-
-
-
-
         analyser.getByteTimeDomainData(dataTime);
         analyser.getFloatFrequencyData(dataFrec)
-
 
         counter += 1;
 
         my_x = [...dataTime];
 
-        const sampled_time = my_x.length / sr * 1000;
-
-
+        // const sampled_time = my_x.length / sr * 1000;
 
 
         // message1 = "Buffer size in time domain: " + my_x.length.toString();
@@ -734,7 +724,6 @@ function SetDefaultWindow() {
         const aa = document.getElementById('window')
         aa.value = "BH7";
     }
-    console.log("jj");
 }
 
 function ColormapMarks() {
