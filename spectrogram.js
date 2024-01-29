@@ -631,7 +631,7 @@ function YaxisMarks() {
     } else if (document.getElementById("scale").value == "Mel") {
         var Yaxis = new Array;
         Yaxis = [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
-        let y0 = canvas.height - border_canvas_plot_bottom;
+        // let y0 = canvas.height - border_canvas_plot_bottom;
         for (var j = 0; j < Yaxis.length; j++) {
 
 
