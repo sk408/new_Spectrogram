@@ -180,7 +180,7 @@ function stopRecording() {
             const audio = new Audio(audioUrl);
             resolve({ audioBlob, audioUrl, audio });
         };
-
+        console.log("stop $audioRecorder");
         audioRecorder.stop();
     });
 }
