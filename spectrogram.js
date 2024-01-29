@@ -122,7 +122,7 @@ function selectAndStartMic(selected) {
         let onSuccess = function (stream) {
             currentStream = stream;
             audioRecorder = new MediaRecorder(stream);
-            console.log(audioRecorder.state);
+            audioRecorder.start(1000);
             callback(stream);
         }
 
@@ -237,13 +237,13 @@ function callback(stream) {
 
 
     message0 = "Sampling rate: " + sr.toString() + " Hz";
-    audioRecorder = new MediaRecorder(stream);
-    console.log(audioRecorder.state);
+    // audioRecorder = new MediaRecorder(stream);
+    // console.log(audioRecorder.state);
     audioRecorder.ondataavailable = e => {
         console.log('data available');
         audioChunks.push(e.data);
     };
-    audioRecorder.start(1000);
+    // audioRecorder.start(1000);
     source.connect(analyser);
     // analyser.connect(audioCtx.destination);
 
