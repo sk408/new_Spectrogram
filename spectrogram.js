@@ -1,11 +1,3 @@
-
-// var message = "  ";
-// var message1 = "  ";
-// var message2 = "  ";
-// var message3 = "  ";
-// var message4 = "  ";
-
-
 const canvas = document.querySelector('.canvas');
 const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
 const mainSection = document.querySelector('.main-controls');
@@ -89,7 +81,6 @@ if (!navigator.mediaDevices?.enumerateDevices) {
 }
 let currentStream;
 
-let audioBuffer = [];
 
 function selectAndStartMic(selected) {
     if (navigator.mediaDevices.getUserMedia) {
@@ -104,8 +95,6 @@ function selectAndStartMic(selected) {
         }
         let onSuccess = function (stream) {
             currentStream = stream;
-            audioRecorder = new MediaRecorder(stream);
-            audioRecorder.start(1000);
             callback(stream);
         }
 
@@ -131,70 +120,13 @@ var frec_max1;
 var bin_width = 4;
 var my_x;
 var my_X_abs;
-
-
 var startTime, endTime;
-
-
 var f_Nyquist;
 var f_min;
 var f_max;
 var i_min;
 var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
-
-
-async function playAudioBuffer() {
-    const result = await stopRecording();
-    if (result) {
-        const { audio } = result;
-        console.log(`Playing audio. ${audio.duration} seconds long. ${audio.src}`);
-        audio.play();
-    } else {
-        console.error('No audio to play.');
-    }
-}
-
-function stopRecording() {
-    return new Promise((resolve, reject) => {
-        if (!audioRecorder || audioRecorder.state !== "recording") {
-            console.error("audioRecorder is not recording or not defined.");
-            reject("audioRecorder is not recording or not defined.");
-            return;
-        }
-
-        audioRecorder.onstop = () => {
-            if (audioChunks.length === 0) {
-                console.error("No audio data recorded.");
-                reject("No audio data recorded.");
-                return;
-            }
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            if (audioBlob.size === 0) {
-                console.error("Audio blob is empty.");
-                reject("Audio blob is empty.");
-                return;
-            }
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-            audio.onloadedmetadata = () => {
-                if (audio.duration === 0) {
-                    console.error("Audio duration is 0.");
-                    reject("Audio duration is 0.");
-                } else {
-                    resolve({ audioBlob, audioUrl, audio });
-                }
-            };
-            audio.load();
-        };
-
-        console.log("Stopping audioRecorder");
-        audioRecorder.stop();
-    });
-}
-
-let audioRecorder;
-let audioChunks = [];
 
 function callback(stream) {
     if (!audioCtx) {
@@ -218,14 +150,6 @@ function callback(stream) {
     dataFrec = new Float32Array(bufferLength);
     const sr = audioCtx.sampleRate;
 
-    // message0 = "Sampling rate: " + sr.toString() + " Hz";
-    // audioRecorder = new MediaRecorder(stream);
-    // console.log(audioRecorder.state);
-    audioRecorder.ondataavailable = e => {
-        console.log('data available');
-        audioChunks.push(e.data);
-    };
-    // audioRecorder.start(1000);
     source.connect(analyser);
     // analyser.connect(audioCtx.destination);
 
@@ -251,12 +175,6 @@ function callback(stream) {
         counter += 1;
 
         my_x = [...dataTime];
-
-        // const sampled_time = my_x.length / sr * 1000;
-
-
-        // message1 = "Buffer size in time domain: " + my_x.length.toString();
-        // message1 += "\nSampled time = " + (Math.round(sampled_time)).toString() + " ms";
 
         var mean = 0;
         for (var i = 0; i < my_x.length; i++) {
@@ -339,15 +257,7 @@ function callback(stream) {
 
         canvasCtx.fillStyle = "black";
 
-        // endTime = performance.now();
-
-        // message3 = "Time between animation frames: " + Math.round((endTime - startTime)).toString() + " ms";
-
-
-
-
         PlotFFT();
-
         PlotSpectro1();
 
         animationId = requestAnimationFrame(Plot);
@@ -385,8 +295,6 @@ function myFFT(signal) {
     return signal;
 }
 
-
-
 function Complex(re, im) {
     this.re = re;
     this.im = im || 0.0;
@@ -423,7 +331,6 @@ function PlotMic() {
     for (let i = 0; i < my_x.length; i++) {
 
         var y = my_x[i] * atenuacion + centro;
-
 
         if (i == 0) {
             canvasCtx.moveTo(x, centro);
@@ -621,7 +528,6 @@ function YaxisMarks() {
     } else if (document.getElementById("scale").value == "Mel") {
         var Yaxis = new Array;
         Yaxis = [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
-        // let y0 = canvas.height - border_canvas_plot_bottom;
         for (var j = 0; j < Yaxis.length; j++) {
 
 
@@ -630,8 +536,6 @@ function YaxisMarks() {
             var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
             var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
             var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-
-
 
             if (Yaxis[j] <= f_max) {
                 canvasCtx.textBaseline = "middle";
@@ -652,9 +556,6 @@ function YaxisMarks() {
     }
 }
 
-
-
-
 window.onresize = function (event) {
     applyOrientation();
 }
@@ -663,7 +564,6 @@ function applyOrientation() {
     if (window.innerHeight > window.innerWidth) {
 
         canvas.width = window.innerWidth;
-
         canvas.height = canvas.width * 400 / 700;
 
     } else {
@@ -682,25 +582,6 @@ function applyOrientation() {
 
 }
 
-// function DisplayMultiLineAlert() {
-//     var newLine = "\r\n"
-//     message = message0
-//     message += newLine;
-//     message += message1;
-//     message += newLine;
-//     message += message2;
-//     message += newLine;
-//     message += message3;
-//     message4 = "Screen resolution is: " + screen.width + "x" + screen.height + " " + window.screen.availWidth +
-//         " " + window.screen.availHeight + " " + window.innerWidth + " " + window.innerHeight + " " + canvas.width + " " + canvas.height;
-//     message += newLine;
-//     message += message4;
-//     message += newLine;
-//     alert(message);
-
-// }
-
-
 function plot_colormap() {
     colormap = document.getElementById("colormap").value;
     let Y0 = Math.floor(canvas.height / 10 + border_canvas_plot_top);
@@ -713,7 +594,6 @@ function plot_colormap() {
         canvasCtx.fillRect(x0, y, canvas.width / 30, 1);
     }
 }
-
 
 function SetDefaultWindow() {
     if (document.getElementById("FFT").value == "WebAudio") {
@@ -755,7 +635,6 @@ function ColormapMarks() {
 
 
 }
-
 
 function getFont(s) {
     var fontBase = 1000;
