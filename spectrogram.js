@@ -154,7 +154,7 @@ function callback(stream) {
     // analyser.connect(audioCtx.destination);
 
     Plot();
-
+}
     function Plot() {
         analyser.fftSize = fftSize;
         bufferLength = analyser.frequencyBinCount;
@@ -262,7 +262,6 @@ function callback(stream) {
 
         animationId = requestAnimationFrame(Plot);
     }
-}
 
 function myFFT(signal) {
     if (signal.length == 1)
