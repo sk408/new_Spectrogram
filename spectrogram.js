@@ -121,6 +121,8 @@ function selectAndStartMic(selected) {
         }
         let onSuccess = function (stream) {
             currentStream = stream;
+            audioRecorder = new MediaRecorder(stream);
+            console.log(audioRecorder.state);
             callback(stream);
         }
 
@@ -190,7 +192,6 @@ function callback(stream) {
 
     }
 
-
     const source = audioCtx.createMediaStreamSource(stream);
 
     const analyser = audioCtx.createAnalyser();
@@ -212,7 +213,7 @@ function callback(stream) {
         console.log('data available');
         audioChunks.push(e.data);
     };
-    audioRecorder.start();
+    audioRecorder.start(1000);
     source.connect(analyser);
     // analyser.connect(audioCtx.destination);
 
