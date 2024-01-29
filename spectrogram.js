@@ -207,7 +207,9 @@ function callback(stream) {
 
     message0 = "Sampling rate: " + sr.toString() + " Hz";
     audioRecorder = new MediaRecorder(stream);
+    console.log(audioRecorder.state);
     audioRecorder.ondataavailable = e => {
+        console.log('data available');
         audioChunks.push(e.data);
     };
     audioRecorder.start();
