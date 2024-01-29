@@ -127,6 +127,7 @@ var f_max;
 var i_min;
 var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
+let analyser;
 
 function callback(stream) {
     if (!audioCtx) {
@@ -139,7 +140,7 @@ function callback(stream) {
 
     const source = audioCtx.createMediaStreamSource(stream);
 
-    const analyser = audioCtx.createAnalyser();
+    analyser = audioCtx.createAnalyser();
     analyser.fftSize = fftSize;
     analyser.minDecibels = -40;
 
