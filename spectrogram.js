@@ -159,8 +159,8 @@ function Plot() {
     f_max = parseFloat(document.getElementById("f_max").value);
     bin_width = parseInt(document.getElementById("speed").value);
 
-    analyser.getByteTimeDomainData(dataTime);
-    analyser.getFloatFrequencyData(dataFrec);
+    // analyser.getByteTimeDomainData(dataTime);
+    // analyser.getFloatFrequencyData(dataFrec);
 
     counter += 1;
     my_x = [...dataTime];
