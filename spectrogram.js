@@ -126,7 +126,6 @@ var f_max;
 var i_min;
 var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
-let analyser;
 
 function callback(stream) {
     if (!audioCtx) {
@@ -134,102 +133,134 @@ function callback(stream) {
             latencyHint: 'interactive',
             sampleRate: 44100,
         });
+
     }
 
     const source = audioCtx.createMediaStreamSource(stream);
+
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = fftSize;
     analyser.minDecibels = -40;
 
     bufferLength = analyser.frequencyBinCount;
+
     dataTime = new Float32Array(bufferLength * 2);
+
     dataFrec = new Float32Array(bufferLength);
+    const sr = audioCtx.sampleRate;
 
     source.connect(analyser);
+    // analyser.connect(audioCtx.destination);
 
     Plot();
-}
 
-function Plot() {
+    function Plot() {
+        analyser.fftSize = fftSize;
+        bufferLength = analyser.frequencyBinCount;
+        dataTime = new Uint8Array(bufferLength * 2);
+        dataFrec = new Float32Array(bufferLength);
+        YaxisMarks();
 
-    YaxisMarks();
+        colormap = document.getElementById("colormap").value;
+        f_min = parseFloat(document.getElementById("f_min").value);
+        f_max = parseFloat(document.getElementById("f_max").value);
 
-    colormap = document.getElementById("colormap").value;
-    f_min = parseFloat(document.getElementById("f_min").value);
-    f_max = parseFloat(document.getElementById("f_max").value);
-    bin_width = parseInt(document.getElementById("speed").value);
+        bin_width = parseInt(document.getElementById("speed").value);
+        // startTime = performance.now();
 
-    // analyser.getByteTimeDomainData(dataTime);
-    // analyser.getFloatFrequencyData(dataFrec);
+        analyser.getByteTimeDomainData(dataTime);
+        analyser.getFloatFrequencyData(dataFrec)
 
-    counter += 1;
-    my_x = [...dataTime];
+        counter += 1;
 
-    const mean = my_x.reduce((acc, val) => acc + val, 0) / my_x.length;
-    const windowType = document.getElementById("window").value;
-    applyWindowFunction(windowType, mean);
+        my_x = [...dataTime];
 
-    PlotMic();
-    processFFT();
-
-    canvasCtx.fillStyle = 'lightblue';
-    canvasCtx.fillRect(border_canvas_plot_top, border_canvas_plot_top, canvas.width / 10 + border_canvas_plot_left - 2 * border_canvas_plot_top, canvas.height / 10 - border_canvas_plot_top);
-    canvasCtx.fillStyle = 'black';
-    canvasCtx.font = getFont(25);
-
-    const centro = (border_canvas_plot_top + canvas.height / 10) / 2;
-    canvasCtx.textAlign = 'right';
-    canvasCtx.fillText(Math.round(frec_max1).toString() + " Hz", canvas.width / 8, centro);
-
-    canvasCtx.fillStyle = "black";
-    PlotFFT();
-    PlotSpectro1();
-
-    animationId = requestAnimationFrame(Plot);
-}
-
-function applyWindowFunction(windowType, mean) {
-    const BH7 = [0.27105140069342, -0.43329793923448, 0.21812299954311, -0.06592544638803, 0.01081174209837, -0.00077658482522, 0.00001388721735];
-    my_x = my_x.map((val, i) => {
-        let windowValue = 1; // Default for "None"
-        if (windowType === "Cosine") {
-            windowValue = Math.sin(Math.PI * i / my_x.length);
-        } else if (windowType === "Hanning") {
-            windowValue = 0.5 * (1 - Math.cos(2 * Math.PI * i / my_x.length));
-        } else if (windowType === "BH7") {
-            windowValue = BH7.reduce((acc, curr, j) => acc + curr * Math.cos(2 * Math.PI * j * i / my_x.length), 0);
+        var mean = 0;
+        for (var i = 0; i < my_x.length; i++) {
+            mean = mean + my_x[i];
         }
-        return (val - mean) * windowValue;
-    });
-}
+        mean = mean / my_x.length
+        var window = document.getElementById("window").value;
+        let BH7 = new Array(7).fill(0);
+        BH7[0] = 0.27105140069342;
+        BH7[1] = -0.43329793923448;
+        BH7[2] = 0.21812299954311;
+        BH7[3] = -0.06592544638803;
+        BH7[4] = 0.01081174209837;
+        BH7[5] = -0.00077658482522;
+        BH7[6] = 0.00001388721735;
+        for (var i = 0; i < my_x.length; i++) {
 
-function processFFT() {
-    my_X_abs = new Float64Array(my_x.length / 2).fill(0);
-    const fftType = document.getElementById("FFT").value;
-    if (fftType === "myFFT") {
-        const fft = myFFT(my_x);
-        updateFFTIntensity(fft);
-    } else if (fftType === "WebAudio") {
-        document.getElementById('window').value = "None";
-        updateWebAudioIntensity();
-    }
-}
+            if (window == "None") {
+                my_x[i] = (my_x[i] - mean);
+            } else if (window == "Cosine") {
+                my_x[i] = (my_x[i] - mean) * Math.sin(Math.PI * i / my_x.length);
+            } else if (window == "Hanning") {
+                my_x[i] = (my_x[i] - mean) * 0.5 * (1 - Math.cos(2 * Math.PI * i / my_x.length));;
 
-function updateFFTIntensity(fft) {
-    max_intensity = -100;
-    for (let i = 1; i < my_x.length / 2; i++) {
-        my_X_abs[i] = 10 * Math.log10((fft[i].re * fft[i].re + fft[i].im * fft[i].im)) - 20;
-        if (my_X_abs[i] > max_intensity) max_intensity = my_X_abs[i];
-    }
-}
+            } else if (window == "BH7") {
 
-function updateWebAudioIntensity() {
-    var my_frec = [...dataFrec];
-    for (let i = 1; i < my_x.length / 2; i++) {
-        my_frec[i] = my_frec[i] + 125;
-        if (my_frec[i] > max_intensity) max_intensity = my_frec[i];
+                let w = 0;
+                for (let j = 0; j < 7; j++) {
+                    w += BH7[j] * Math.cos(2 * Math.PI * j * i / my_x.length);
+                }
+                my_x[i] = (my_x[i] - mean) * w;
+            }
+        }
+
+        PlotMic();
+        my_X_abs = new Float64Array(my_x.length / 2).fill(0);
+
+        if (document.getElementById("FFT").value == "myFFT") {
+            fft = myFFT(my_x);
+
+            max_intensity = -100;
+            for (var i = 1; i < my_x.length / 2; i += 1) {
+
+                my_X_abs[i] = 10 * Math.log10((fft[i].re * fft[i].re + fft[i].im * fft[i].im)) - 20;
+                if (my_X_abs[i] > max_intensity) max_intensity = my_X_abs[i];
+            }
+
+        } else if (document.getElementById("FFT").value == "WebAudio") {
+            const aa = document.getElementById('window')
+            aa.value = "None";
+            var my_frec = [...dataFrec];
+            for (var i = 1; i < my_x.length / 2; i += 1) {
+                my_frec[i] = my_frec[i] + 125;
+                if (my_frec[i] > max_intensity) max_intensity = my_frec[i];
+
+            }
+            my_X_abs = my_frec;
+        }
+        i_min = Math.floor(my_X_abs.length * f_min / f_Nyquist);
+        i_max = Math.floor(my_X_abs.length * f_max / f_Nyquist);
+
+
+        var ts = new Array(my_x.length / 2).fill(0);
+        var frec1 = new Array(my_x.length / 2).fill(0);
+        var frec2 = new Array(my_x.length).fill(0);
+        const max_frec1 = Math.max(...my_X_abs);
+        const index_frec1 = my_X_abs.indexOf(max_frec1);
+        frec_max1 = index_frec1 / my_X_abs.length * audioCtx.sampleRate / 2;
+
+        canvasCtx.fillStyle = 'lightblue';
+        canvasCtx.fillRect(border_canvas_plot_top, border_canvas_plot_top, canvas.width / 10 + border_canvas_plot_left - 2 * border_canvas_plot_top, canvas.height / 10 - border_canvas_plot_top);
+        canvasCtx.fillStyle = 'black';
+        canvasCtx.font = getFont(25);
+
+        var centro = (border_canvas_plot_top + canvas.height / 10) / 2;
+
+        canvasCtx.textAlign = 'right';
+        canvasCtx.fillText(Math.round(frec_max1).toString() + " Hz", canvas.width / 8, centro);
+
+
+        canvasCtx.fillStyle = "black";
+
+        PlotFFT();
+        PlotSpectro1();
+
+        animationId = requestAnimationFrame(Plot);
     }
-    my_X_abs = my_frec;
 }
 
 function myFFT(signal) {
