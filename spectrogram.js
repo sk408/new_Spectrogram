@@ -25,9 +25,6 @@ var max_intensity;
 var sensibility;
 var sensibility_temp;
 
-
-
-
 let animationId;
 
 let audioCtx;
@@ -431,267 +428,226 @@ const HSLToRGB = (h, s, l) => {
 
 
 function PlotMic() {
+    const scaleVertical = calculateVerticalScale();
+    const attenuation = 0.4;
+    const nyquistFrequency = calculateNyquistFrequency();
+    setCanvasStyles();
 
-    var scale_v = canvas.height / 760;
-    var atenuacion = .4;
-    f_Nyquist = audioCtx.sampleRate / 2;
+    const plotArea = calculatePlotArea();
+    fillPlotBackground(plotArea);
+
+    const center = calculateCenter(plotArea);
+    drawWaveform(center, scaleVertical, attenuation, plotArea);
+}
+
+function calculateVerticalScale() {
+    return canvas.height / 760;
+}
+
+function calculateNyquistFrequency() {
+    return audioCtx.sampleRate / 2;
+}
+
+function setCanvasStyles() {
     canvasCtx.lineWidth = 1;
-
-
     canvasCtx.fillStyle = '#003B5C';
-
-    canvasCtx.fillRect(canvas.width / 10 + border_canvas_plot_left, 0, .9 * canvas.width - border_canvas_plot_right - border_canvas_plot_left, canvas.height / 10 + border_canvas_plot_top);
-
-    canvasCtx.beginPath();
-    let x = canvas.width / 10 + border_canvas_plot_left;
-
     canvasCtx.strokeStyle = 'white';
-    var centro = (canvas.height / 10 + border_canvas_plot_top) / 2;
+}
+
+function calculatePlotArea() {
+    return {
+        startX: canvas.width / 10 + border_canvas_plot_left,
+        width: 0.9 * canvas.width - border_canvas_plot_right - border_canvas_plot_left,
+        height: canvas.height / 10 + border_canvas_plot_top
+    };
+}
+
+function fillPlotBackground(plotArea) {
+    canvasCtx.fillRect(plotArea.startX, 0, plotArea.width, plotArea.height);
+}
+
+function calculateCenter(plotArea) {
+    return plotArea.height / 2;
+}
+
+function drawWaveform(center, scaleVertical, attenuation, plotArea) {
+    canvasCtx.beginPath();
+    let x = plotArea.startX;
+
     for (let i = 0; i < my_x.length; i++) {
+        let y = my_x[i] * attenuation + center;
 
-        var y = my_x[i] * atenuacion + centro;
-
-
-        if (i == 0) {
-            canvasCtx.moveTo(x, centro);
+        if (i === 0) {
+            canvasCtx.moveTo(x, center);
         } else {
-            y = centro + (y - centro) * scale_v;
-            if (y > canvas.height / 10 + border_canvas_plot_top - 1) {
-                y = canvas.height / 10 + border_canvas_plot_top - 1;
-            }
+            y = center + (y - center) * scaleVertical;
+            y = Math.min(y, plotArea.height - 1);
             canvasCtx.lineTo(x, y);
         }
 
-        x += (.9 * canvas.width - border_canvas_plot_left - border_canvas_plot_right) / my_x.length;
+        x += plotArea.width / my_x.length;
     }
     canvasCtx.stroke();
-
 }
 
+// function calculateYPosition(scale, i, Y0, deltaY0, f_min, f_max, mel_i_min, mel_i_max) {
+//     if (scale === "Linear") {
+//         return Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
+//     } else if (scale === "Mel") {
+//         const freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
+//         const mel_i = 1127.01048 * Math.log(freq / 700 + 1);
+//         return Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+//     }
+// }
+
 function PlotFFT() {
-    var scale_h = canvas.width / 1440;
-
+    const scale_h = canvas.width / 1440;
     canvasCtx.lineWidth = 1;
-    canvasCtx.strokeStyle = 'hsl(' + 360 * 0 + ',100%,50%)';
-
+    canvasCtx.strokeStyle = 'hsl(0,100%,50%)';
     canvasCtx.fillStyle = '#003B5C';
-
     canvasCtx.fillRect(0, canvas.height / 10 + border_canvas_plot_top, .9 * canvas.width / 10, .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top);
 
-    var y;
-    let Y0 = canvas.height / 10 + border_canvas_plot_top;
-    var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
+    const Y0 = canvas.height / 10 + border_canvas_plot_top;
+    const deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
+    const deltaY = (canvas.height - canvas.height / 10 - border_canvas_plot_top - border_canvas_plot_bottom) / (i_max - i_min);
+    const mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+    const mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
 
-    var deltaY = (canvas.height - canvas.height / 10 - border_canvas_plot_top - border_canvas_plot_bottom) / (i_max - i_min);
-
-    var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-    var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
     for (let i = i_min; i < i_max; i++) {
-        var freq2 = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
-        if (document.getElementById("scale").value == "Linear") {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
-            var mel_i = 1127.01048 * Math.log(freq2 / 700 + 1)
-
-            var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-        }
-        scale_h = canvas.width / 1440;
-        let x = -my_X_abs[i] * scale_h + .9 * canvas.width / 10;
-
-        var value = my_X_abs[i] / (sensibility);
-
-        canvasCtx.strokeStyle = 'hsl(' + 360 * (1 - value) + ',100%,50%)';
+        const y = calculateYPosition(document.getElementById("scale").value, i, Y0, deltaY0, f_min, f_max, mel_i_min, mel_i_max);
+        const x = -my_X_abs[i] * scale_h + .9 * canvas.width / 10;
+        const value = my_X_abs[i] / sensibility;
+        canvasCtx.strokeStyle = `hsl(${360 * (1 - value)},100%,50%)`;
         canvasCtx.beginPath();
-
         canvasCtx.moveTo(.9 * canvas.width / 10, y);
-
         if (my_X_abs[i] > 0) canvasCtx.lineTo(x, y);
-
         canvasCtx.stroke();
-
     }
 
-    y = canvas.height - border_canvas_plot_bottom;
+    updateSensibility();
+}
 
-    canvasCtx.beginPath();
-    canvasCtx.strokeStyle = 'white';
-    sensibility = document.getElementById("sensibility").value;;
-    for (let i = i_min; i < i_max; i++) {
-
-        if (document.getElementById("scale").value == "Linear") {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
-            var freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min)
-
-            var mel_i = 1127.01048 * Math.log(freq / 700 + 1)
-            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
-            y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-        }
-        let x = -my_X_abs[i] * scale_h + .9 * canvas.width / 10;
-
-        if (i === i_min) {
-            canvasCtx.moveTo(.9 * canvas.width / 10, y);
-        } else {
-            if (my_X_abs[i] > 0) canvasCtx.lineTo(x, y);
-        }
-        y -= deltaY;
-
-    }
-    canvasCtx.stroke();
-
+function updateSensibility() {
+    sensibility = document.getElementById("sensibility").value;
     if (max_intensity > sensibility) {
         sensibility_temp = max_intensity;
-        ColormapMarks();
     } else {
         sensibility_temp = sensibility;
     }
     ColormapMarks();
     document.getElementById("output_sensibility").innerHTML = Math.floor(sensibility_temp);
     document.getElementById("sensibility").value = Math.floor(sensibility_temp);
+}
 
-    canvasCtx.moveTo(-sensibility_temp * scale_h + .9 * canvas.width / 10, Y0);
-    canvasCtx.lineTo(-sensibility_temp * scale_h + .9 * canvas.width / 10, Y0 + deltaY0);
+
+function calculateYPosition(scale, i, Y0, deltaY0, f_min, f_max, mel_i_min, mel_i_max) {
+    if (scale === "Linear") {
+        return Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
+    } else if (scale === "Mel") {
+        const freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
+        const mel_i = 1127.01048 * Math.log(freq / 700 + 1);
+        return Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+    }
+}
+
+function drawLine(scrolling, X0, deltaX0, y, bin_width) {
+    canvasCtx.beginPath();
+    if (scrolling) {
+        canvasCtx.moveTo(X0 + deltaX0, y);
+        canvasCtx.lineTo(X0 + deltaX0 - bin_width, y);
+    } else {
+        canvasCtx.moveTo(X0, y);
+        canvasCtx.lineTo(X0 + bin_width, y);
+    }
     canvasCtx.stroke();
 }
 
-
 function PlotSpectro1() {
-
     fftSize = parseInt(document.getElementById("sizeFFT").value);
     canvasCtx.lineWidth = 1;
-
-
     canvasCtx.fillStyle = 'white';
     let X0 = Math.floor(canvas.width / 10 + border_canvas_plot_left);
     let deltaX0 = Math.floor(.9 * canvas.width - border_canvas_plot_left - border_canvas_plot_right - bin_width);
-
-    let X1 = canvas.width / 10 + border_canvas_plot_left + bin_width;
     let Y0 = canvas.height / 10 + border_canvas_plot_top;
     var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
 
+    const scale = document.getElementById("scale").value;
+    const scrolling = document.getElementById("scrolling").checked;
+    const stop = document.getElementById("stop").checked;
 
-    var deltaY = deltaY0 / (i_max - i_min);
-    if (document.getElementById("stop").checked == false) {
-        if (document.getElementById("scrolling").checked == true) {
-            var imgData = canvasCtx.getImageData(X0 + bin_width, Y0, deltaX0 - bin_width, deltaY0);
-            canvasCtx.putImageData(imgData, X0, Y0);
-        } else {
-            var imgData = canvasCtx.getImageData(X0 + 1, Y0, deltaX0 - bin_width - 1, deltaY0);
-            canvasCtx.putImageData(imgData, X0 + bin_width, Y0);
-
-        }
+    if (!stop) {
+        const imgData = canvasCtx.getImageData(X0 + (scrolling ? bin_width : 1), Y0, deltaX0 - bin_width - (scrolling ? 0 : 1), deltaY0);
+        canvasCtx.putImageData(imgData, X0 + (scrolling ? 0 : bin_width), Y0);
     }
-    var y;
 
-    var i_caja = 0;
+    const mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+    const mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
+
     for (let i = i_min; i < i_max; i++) {
-        if (document.getElementById("scale").value == "Linear") {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
-            var freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min)
-            var mel_i = 1127.01048 * Math.log(freq / 700 + 1)
-            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
-
-            y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-        }
-
-
-        var value = my_X_abs[i] / (sensibility);
-        if (value > 1) value = 1;
-
-        var myrgb = evaluate_cmap(value, colormap, false);
+        const y = calculateYPosition(scale, i, Y0, deltaY0, f_min, f_max, mel_i_min, mel_i_max);
+        const value = Math.min(my_X_abs[i] / sensibility, 1);
+        const myrgb = evaluate_cmap(value, colormap, false);
         canvasCtx.strokeStyle = 'rgb(' + myrgb + ')';
-
-
-        canvasCtx.beginPath();
-        if (document.getElementById("scrolling").checked == true) {
-            canvasCtx.moveTo(X0 + deltaX0, y);
-
-            canvasCtx.lineTo(X0 + deltaX0 - bin_width, y);
-        } else {
-
-            canvasCtx.moveTo(X0, y);
-
-            canvasCtx.lineTo(X0 + bin_width, y);
-        }
-
-        canvasCtx.stroke();
-
+        drawLine(scrolling, X0, deltaX0, y, bin_width);
     }
 
     canvasCtx.font = getFont(10);
-
 }
 
-
 function YaxisMarks() {
+    const axisStartX = canvas.width / 10 + border_canvas_plot_left;
+    const axisStartY = canvas.height / 10 + border_canvas_plot_top;
+    const axisHeight = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
 
+    // Draw the axis background
     canvasCtx.fillStyle = 'white';
-    let X0 = canvas.width / 10 + border_canvas_plot_left;
-    let Y0 = canvas.height / 10 + border_canvas_plot_top;
-    var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
-
-    canvasCtx.fillRect(.9 * canvas.width / 10, Y0 - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, Y0 + deltaY0);
+    canvasCtx.fillRect(.9 * canvas.width / 10, axisStartY - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, axisStartY + axisHeight);
     canvasCtx.fillStyle = "black";
     canvasCtx.font = getFont(10);
-
     canvasCtx.textAlign = 'right';
 
+    const scale = document.getElementById("scale").value;
+    const Yaxis = getYaxisValues(scale);
+    const mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+    const mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
 
-    if (document.getElementById("scale").value == "Linear") {
-        var Yaxis = new Array;
-        Yaxis = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000];
-        for (var j = 0; j < Yaxis.length; j++) {
-            var y = Y0 + deltaY0 - deltaY0 * (Yaxis[j] - f_min) / (f_max - f_min);
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.textBaseline = "middle";
-
-                canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
-            }
-            canvasCtx.strokeStyle = "black";
-            canvasCtx.beginPath();
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.moveTo(X0, y);
-                canvasCtx.lineTo(X0 - 4, y);
-                canvasCtx.moveTo(.9 * canvas.width / 10, y);
-                canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
-            }
-            canvasCtx.stroke();
+    Yaxis.forEach(value => {
+        const y = calculateYPosition(value, scale, axisStartY, axisHeight, mel_i_min, mel_i_max);
+        if (value <= f_max) {
+            drawYAxisMark(axisStartX, y, value.toString() + " Hz");
         }
-    } else if (document.getElementById("scale").value == "Mel") {
-        var Yaxis = new Array;
-        Yaxis = [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
-        let y0 = canvas.height - border_canvas_plot_bottom;
-        for (var j = 0; j < Yaxis.length; j++) {
+    });
+}
 
-
-            var mel_i = 1127.01048 * Math.log(Yaxis[j] / 700 + 1)
-
-            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
-            var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-
-
-
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.textBaseline = "middle";
-
-                canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
-            }
-            canvasCtx.strokeStyle = "black";
-            canvasCtx.beginPath();
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.moveTo(X0, y);
-                canvasCtx.lineTo(X0 - 4, y);
-                canvasCtx.moveTo(.9 * canvas.width / 10, y);
-
-                canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
-            }
-            canvasCtx.stroke();
-        }
+function getYaxisValues(scale) {
+    if (scale === "Linear") {
+        return [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000];
+    } else if (scale === "Mel") {
+        return [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
     }
+    return [];
+}
+
+function calculateYPosition(value, scale, axisStartY, axisHeight, mel_i_min, mel_i_max) {
+    if (scale === "Linear") {
+        return axisStartY + axisHeight - axisHeight * (value - f_min) / (f_max - f_min);
+    } else if (scale === "Mel") {
+        const mel_i = 1127.01048 * Math.log(value / 700 + 1);
+        return axisStartY + axisHeight - axisHeight * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+    }
+    return axisStartY;
+}
+
+function drawYAxisMark(axisStartX, y, text) {
+    canvasCtx.textBaseline = "middle";
+    canvasCtx.fillText(text, axisStartX - border_canvas_plot_top, y);
+    canvasCtx.strokeStyle = "black";
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(axisStartX, y);
+    canvasCtx.lineTo(axisStartX - 4, y);
+    canvasCtx.moveTo(.9 * canvas.width / 10, y);
+    canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
+    canvasCtx.stroke();
 }
 
 
@@ -721,17 +677,8 @@ function applyOrientation() {
     border_canvas_plot_bottom = 80 * scale_v;
     border_canvas_plot_top = 10 * scale_v;
     plot_colormap();
-    var my_element = document.getElementById("my_element");
-
-    my_element.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-        inline: "nearest"
-    });
 
 }
-
-
 
 function DisplayMultiLineAlert() {
     var newLine = "\r\n"
