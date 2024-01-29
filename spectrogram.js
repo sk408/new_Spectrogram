@@ -161,9 +161,14 @@ var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
 
 
-async function playAudioBuffer(samples) {
-    const { audio } = await stopRecording();
-    audio.play();
+async function playAudioBuffer() {
+    const result = await stopRecording();
+    if (result) {
+        const { audio } = result;
+        audio.play();
+    } else {
+        console.error('No audio to play.');
+    }
 }
 
 function stopRecording() {
