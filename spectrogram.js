@@ -159,26 +159,28 @@ var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
 
 
-function playAudioBuffer(samples) {
-    const samplesFlat = samples.flat();
-    console.log(samplesFlat);
-    const totalNumberOfSamples = samplesFlat.length;
-    const finalBuffer = audioCtx.createBuffer(1, totalNumberOfSamples, audioCtx.sampleRate);
-
-    const channelData = finalBuffer.getChannelData(0); // Moved outside the loop
-    for (let i = 0; i < samplesFlat.length; ++i) {
-      channelData[i] = samplesFlat[i];
-    }
-
-    const source = audioCtx.createBufferSource();
-    source.buffer = finalBuffer;
-    source.connect(audioCtx.destination);
-    console.log(audioCtx.destination)
-    console.log(audioCtx.state)
-    console.log(finalBuffer)
-
-    source.start();
+async function playAudioBuffer(samples) {
+    const { audio } = await stopRecording();
+    audio.play();
 }
+
+function stopRecording() {
+    return new Promise(resolve => {
+      audioRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        resolve({ audioBlob, audioUrl, audio });
+      };
+  
+      audioRecorder.stop();
+    });
+  }
+  
+
+let audioRecorder;
+let audioChunks = [];
+
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
@@ -209,30 +211,36 @@ function callback(stream) {
     
 
     // Create a ScriptProcessorNode for buffering
-    let scriptNode = audioCtx.createScriptProcessor(16384, 1, 1);
+    audioRecorder = new MediaRecorder(stream);
+    // let scriptNode = audioCtx.createScriptProcessor(16384, 1, 1);
 
     // Create a buffer to hold the audio data
 
     // Set up the onaudioprocess event handler
-
-    scriptNode.onaudioprocess = function(audioProcessingEvent) {
-        const inputBuffer = audioProcessingEvent.inputBuffer;
-        const inputData = [];
-    
-        for (let ch = 0; ch < inputBuffer.numberOfChannels; ++ch) {
-          inputData.push(inputBuffer.getChannelData(ch));
-        }
-    
-        // if (startTime === null) {
-        //   startTime = performance.now();
-        // }
-    
-        audioBuffer.push(inputData);
-    
-        // if ((performance.now() - startTime) > MINIMUM_RECORDING_DURATION_MS || audioBuffersAccumulator.length >= NUM_CHUNKS_TO_COMBINE) {
-        //   stopRecording();
-        // }
+    audioRecorder.ondataavailable = e => {
+        audioChunks.push(e.data);
       };
+    
+      audioRecorder.start();
+
+    // scriptNode.onaudioprocess = function(audioProcessingEvent) {
+    //     const inputBuffer = audioProcessingEvent.inputBuffer;
+    //     const inputData = [];
+    
+    //     for (let ch = 0; ch < inputBuffer.numberOfChannels; ++ch) {
+    //       inputData.push(inputBuffer.getChannelData(ch));
+    //     }
+    
+    //     // if (startTime === null) {
+    //     //   startTime = performance.now();
+    //     // }
+    
+    //     audioBuffer.push(inputData);
+    
+    //     // if ((performance.now() - startTime) > MINIMUM_RECORDING_DURATION_MS || audioBuffersAccumulator.length >= NUM_CHUNKS_TO_COMBINE) {
+    //     //   stopRecording();
+    //     // }
+    //   };
     
     // Connect the nodes
     source.connect(analyser);
