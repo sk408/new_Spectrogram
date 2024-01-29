@@ -156,8 +156,8 @@ function callback(stream) {
     Plot();
 }
     function Plot() {
-        analyser.fftSize = fftSize;
-        bufferLength = analyser.frequencyBinCount;
+        // analyser.fftSize = fftSize;
+        // bufferLength = analyser.frequencyBinCount;
         dataTime = new Uint8Array(bufferLength * 2);
         dataFrec = new Float32Array(bufferLength);
         YaxisMarks();
