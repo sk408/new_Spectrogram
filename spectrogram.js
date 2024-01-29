@@ -165,7 +165,7 @@ async function playAudioBuffer() {
     const result = await stopRecording();
     if (result) {
         const { audio } = result;
-        console.log(`Playing audio. ${audio.duration} seconds long. ${audio.src} ${audioBlob.size} bytes`);
+        console.log(`Playing audio. ${audio.duration} seconds long. ${audio.src} bytes`);
         audio.play();
     } else {
         console.error('No audio to play.');
