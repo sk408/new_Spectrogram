@@ -202,6 +202,7 @@ function stopRecording() {
                     resolve({ audioBlob, audioUrl, audio });
                 }
             };
+            audio.load();
         };
 
         console.log("Stopping audioRecorder");
