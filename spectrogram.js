@@ -1,9 +1,9 @@
 
-var message = "  ";
-var message1 = "  ";
-var message2 = "  ";
-var message3 = "  ";
-var message4 = "  ";
+// var message = "  ";
+// var message1 = "  ";
+// var message2 = "  ";
+// var message3 = "  ";
+// var message4 = "  ";
 
 
 const canvas = document.querySelector('.canvas');
@@ -40,21 +40,10 @@ const createAudioGraphDebounced = () => {
     debounce = setTimeout(() => document.getElementById("stop").checked = !document.getElementById("stop").checked, 100);
 };
 
-let touchstartX = 0;
-let touchstartY = 0;
 let time = 0;
 
 const handleGesture = (event) => {
     const elapsedTime = new Date().getTime() - time;
-    const touchendX = event.changedTouches[0].screenX;
-    const touchendY = event.changedTouches[0].screenY;
-    const dx = touchendX - touchstartX;
-    const dy = touchendY - touchstartY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-
-
-
     if (elapsedTime > 250 && elapsedTime > 250) {
         createAudioGraphDebounced();
     }
@@ -65,14 +54,11 @@ function onKeyDown(e) {
 }
 
 canvas.addEventListener('mousedown', function (event) {
-    if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
         createAudioGraphDebounced();
-    }
-});
-canvas.addEventListener("keydown", onKeyDown);
+    });
+window.addEventListener("keydown", onKeyDown);
 canvas.addEventListener('touchstart', (event) => {
-    touchstartX = event.changedTouches[0].screenX;
-    touchstartY = event.changedTouches[0].screenY;
+
     time = new Date().getTime();
 });
 canvas.addEventListener('touchend', handleGesture);
@@ -233,7 +219,7 @@ function callback(stream) {
     const sr = audioCtx.sampleRate;
 
 
-    message0 = "Sampling rate: " + sr.toString() + " Hz";
+    // message0 = "Sampling rate: " + sr.toString() + " Hz";
     // audioRecorder = new MediaRecorder(stream);
     // console.log(audioRecorder.state);
     audioRecorder.ondataavailable = e => {
@@ -260,7 +246,7 @@ function callback(stream) {
         f_max = parseFloat(document.getElementById("f_max").value);
 
         bin_width = parseInt(document.getElementById("speed").value);
-        startTime = performance.now();
+        // startTime = performance.now();
 
 
 
@@ -279,8 +265,8 @@ function callback(stream) {
 
 
 
-        message1 = "Buffer size in time domain: " + my_x.length.toString();
-        message1 += "\nSampled time = " + (Math.round(sampled_time)).toString() + " ms";
+        // message1 = "Buffer size in time domain: " + my_x.length.toString();
+        // message1 += "\nSampled time = " + (Math.round(sampled_time)).toString() + " ms";
 
         var mean = 0;
         for (var i = 0; i < my_x.length; i++) {
@@ -363,9 +349,9 @@ function callback(stream) {
 
         canvasCtx.fillStyle = "black";
 
-        endTime = performance.now();
+        // endTime = performance.now();
 
-        message3 = "Time between animation frames: " + Math.round((endTime - startTime)).toString() + " ms";
+        // message3 = "Time between animation frames: " + Math.round((endTime - startTime)).toString() + " ms";
 
 
 
@@ -607,6 +593,7 @@ function PlotSpectro1() {
     canvasCtx.font = getFont(10);
 }
 
+
 function YaxisMarks() {
 
     canvasCtx.fillStyle = 'white';
@@ -705,23 +692,23 @@ function applyOrientation() {
 
 }
 
-function DisplayMultiLineAlert() {
-    var newLine = "\r\n"
-    message = message0
-    message += newLine;
-    message += message1;
-    message += newLine;
-    message += message2;
-    message += newLine;
-    message += message3;
-    message4 = "Screen resolution is: " + screen.width + "x" + screen.height + " " + window.screen.availWidth +
-        " " + window.screen.availHeight + " " + window.innerWidth + " " + window.innerHeight + " " + canvas.width + " " + canvas.height;
-    message += newLine;
-    message += message4;
-    message += newLine;
-    alert(message);
+// function DisplayMultiLineAlert() {
+//     var newLine = "\r\n"
+//     message = message0
+//     message += newLine;
+//     message += message1;
+//     message += newLine;
+//     message += message2;
+//     message += newLine;
+//     message += message3;
+//     message4 = "Screen resolution is: " + screen.width + "x" + screen.height + " " + window.screen.availWidth +
+//         " " + window.screen.availHeight + " " + window.innerWidth + " " + window.innerHeight + " " + canvas.width + " " + canvas.height;
+//     message += newLine;
+//     message += message4;
+//     message += newLine;
+//     alert(message);
 
-}
+// }
 
 
 function plot_colormap() {
