@@ -415,75 +415,61 @@ function PlotMic() {
     }
     canvasCtx.stroke();
 }
+function calculateY(i, Y0, deltaY0, i_min, i_max, f_min, f_max, scale) {
+    let y;
+    if (scale == "Linear") {
+        y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
+    } else if (scale == "Mel") {
+        let freq2 = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
+        let mel_i = 1127.01048 * Math.log(freq2 / 700 + 1);
+        let mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+        let mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
+        y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+    }
+    return y;
+}
+
+function drawLine2(i, y, my_X_abs, scale_h, canvasCtx) {
+    let x = -my_X_abs[i] * scale_h + .9 * canvas.width / 10;
+    let value = my_X_abs[i] / (sensibility);
+    canvasCtx.strokeStyle = 'hsl(' + 360 * (1 - value) + ',100%,50%)';
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(.9 * canvas.width / 10, y);
+    if (my_X_abs[i] > 0) canvasCtx.lineTo(x, y);
+    canvasCtx.stroke();
+}
+
 function PlotFFT() {
     var scale_h = canvas.width / 1440;
-
     canvasCtx.lineWidth = 1;
     canvasCtx.strokeStyle = 'hsl(' + 360 * 0 + ',100%,50%)';
-
     canvasCtx.fillStyle = '#003B5C';
-
     canvasCtx.fillRect(0, canvas.height / 10 + border_canvas_plot_top, .9 * canvas.width / 10, .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top);
 
-    var y;
     let Y0 = canvas.height / 10 + border_canvas_plot_top;
-    var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
+    let deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
+    let deltaY = (canvas.height - canvas.height / 10 - border_canvas_plot_top - border_canvas_plot_bottom) / (i_max - i_min);
+    let scale = document.getElementById("scale").value;
 
-    var deltaY = (canvas.height - canvas.height / 10 - border_canvas_plot_top - border_canvas_plot_bottom) / (i_max - i_min);
-
-    var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-    var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
     for (let i = i_min; i < i_max; i++) {
-        var freq2 = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
-        if (document.getElementById("scale").value == "Linear") {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
-            var mel_i = 1127.01048 * Math.log(freq2 / 700 + 1)
-
-            var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-        }
-        scale_h = canvas.width / 1440;
-        let x = -my_X_abs[i] * scale_h + .9 * canvas.width / 10;
-
-        var value = my_X_abs[i] / (sensibility);
-
-        canvasCtx.strokeStyle = 'hsl(' + 360 * (1 - value) + ',100%,50%)';
-        canvasCtx.beginPath();
-
-        canvasCtx.moveTo(.9 * canvas.width / 10, y);
-
-        if (my_X_abs[i] > 0) canvasCtx.lineTo(x, y);
-
-        canvasCtx.stroke();
-
+        let y = calculateY(i, Y0, deltaY0, i_min, i_max, f_min, f_max, scale);
+        drawLine2(i, y, my_X_abs, scale_h, canvasCtx);
     }
 
-    y = canvas.height - border_canvas_plot_bottom;
-
+    let y = canvas.height - border_canvas_plot_bottom;
     canvasCtx.beginPath();
     canvasCtx.strokeStyle = 'white';
     sensibility = document.getElementById("sensibility").value;;
+
     for (let i = i_min; i < i_max; i++) {
-
-        if (document.getElementById("scale").value == "Linear") {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
-            var freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min)
-
-            var mel_i = 1127.01048 * Math.log(freq / 700 + 1)
-            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
-            y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-        }
+        y = calculateY(i, Y0, deltaY0, i_min, i_max, f_min, f_max, scale);
         let x = -my_X_abs[i] * scale_h + .9 * canvas.width / 10;
-
         if (i === i_min) {
             canvasCtx.moveTo(.9 * canvas.width / 10, y);
         } else {
             if (my_X_abs[i] > 0) canvasCtx.lineTo(x, y);
         }
         y -= deltaY;
-
     }
     canvasCtx.stroke();
 
@@ -501,8 +487,6 @@ function PlotFFT() {
     canvasCtx.lineTo(-sensibility_temp * scale_h + .9 * canvas.width / 10, Y0 + deltaY0);
     canvasCtx.stroke();
 }
-
-
 function calculateYPosition(scale, i, Y0, deltaY0, f_min, f_max, mel_i_min, mel_i_max) {
     if (scale === "Linear") {
         return Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
