@@ -163,7 +163,7 @@ function callback(stream) {
     Plot();
 }
 let lastUpdateTime = 0;
-const updateInterval = 250; // 1/4 second in milliseconds
+const updateInterval = 1250; // 1/4 second in milliseconds
 var persist;
 
 
