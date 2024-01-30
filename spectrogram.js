@@ -81,26 +81,33 @@ if (!navigator.mediaDevices?.enumerateDevices) {
 }
 let currentStream;
 
+function stopCurrentStream() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+}
+
+function stopCurrentAnimation() {
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+    }
+}
+
+function onSuccess(stream) {
+    currentStream = stream;
+    callback(stream);
+}
+
+function onError(err) {
+    console.log('The following error occured: ' + err);
+}
 
 function selectAndStartMic(selected) {
     if (navigator.mediaDevices.getUserMedia) {
         console.log('getUserMedia supported.');
 
-
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-        }
-        if (animationId) {
-            cancelAnimationFrame(animationId);
-        }
-        let onSuccess = function (stream) {
-            currentStream = stream;
-            callback(stream);
-        }
-
-        let onError = function (err) {
-            console.log('The following error occured: ' + err);
-        }
+        stopCurrentStream();
+        stopCurrentAnimation();
 
         const constraints = { audio: { deviceId: selected ? { exact: selected } : undefined } };
         navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
@@ -108,7 +115,6 @@ function selectAndStartMic(selected) {
         console.log('getUserMedia not supported on your browser!');
     }
 }
-
 var bufferLength;
 var dataTime;
 var dataFrec;
