@@ -263,9 +263,7 @@ function callback(stream) {
     }
 }
 
-function myFFT(signal) {
-    if (signal.length == 1)
-        return signal;
+function splitSignal(signal) {
     var halfLength = signal.length / 2;
     var even = [];
     var odd = [];
@@ -275,13 +273,20 @@ function myFFT(signal) {
         even[i] = signal[i * 2];
         odd[i] = signal[i * 2 + 1];
     }
-    even = myFFT(even);
-    odd = myFFT(odd);
+    return { even, odd };
+}
+
+function ensureComplex(array) {
+    for (var k = 0; k < array.length; ++k) {
+        if (!(array[k] instanceof Complex))
+            array[k] = new Complex(array[k], 0);
+    }
+    return array;
+}
+
+function calculateFFT(even, odd, signal) {
+    var halfLength = signal.length / 2;
     for (var k = 0; k < halfLength; ++k) {
-        if (!(even[k] instanceof Complex))
-            even[k] = new Complex(even[k], 0);
-        if (!(odd[k] instanceof Complex))
-            odd[k] = new Complex(odd[k], 0);
         var a = Math.cos(2 * Math.PI * k / signal.length);
         var b = Math.sin(-2 * Math.PI * k / signal.length);
         var temp_k_real = odd[k].re * a - odd[k].im * b;
@@ -294,11 +299,21 @@ function myFFT(signal) {
     return signal;
 }
 
+function myFFT(signal) {
+    if (signal.length == 1)
+        return signal;
+    var { even, odd } = splitSignal(signal);
+    even = myFFT(even);
+    odd = myFFT(odd);
+    even = ensureComplex(even);
+    odd = ensureComplex(odd);
+    return calculateFFT(even, odd, signal);
+}
+
 function Complex(re, im) {
     this.re = re;
     this.im = im || 0.0;
 }
-
 const HSLToRGB = (h, s, l) => {
     s /= 100;
     l /= 100;
@@ -309,44 +324,45 @@ const HSLToRGB = (h, s, l) => {
     return [255 * f(0), 255 * f(8), 255 * f(4)];
 };
 
-
-function PlotMic() {
-
-    var scale_v = canvas.height / 760;
-    var atenuacion = .4;
-    f_Nyquist = audioCtx.sampleRate / 2;
-    canvasCtx.lineWidth = 1;
-
-
-    canvasCtx.fillStyle = '#003B5C';
-
-    canvasCtx.fillRect(canvas.width / 10 + border_canvas_plot_left, 0, .9 * canvas.width - border_canvas_plot_right - border_canvas_plot_left, canvas.height / 10 + border_canvas_plot_top);
-
-    canvasCtx.beginPath();
+function getCanvasCoordinates2() {
     let x = canvas.width / 10 + border_canvas_plot_left;
+    let centro = (canvas.height / 10 + border_canvas_plot_top) / 2;
+    let scale_v = canvas.height / 760;
 
-    canvasCtx.strokeStyle = 'white';
-    var centro = (canvas.height / 10 + border_canvas_plot_top) / 2;
-    for (let i = 0; i < my_x.length; i++) {
-
-        var y = my_x[i] * atenuacion + centro;
-
-        if (i == 0) {
-            canvasCtx.moveTo(x, centro);
-        } else {
-            y = centro + (y - centro) * scale_v;
-            if (y > canvas.height / 10 + border_canvas_plot_top - 1) {
-                y = canvas.height / 10 + border_canvas_plot_top - 1;
-            }
-            canvasCtx.lineTo(x, y);
-        }
-
-        x += (.9 * canvas.width - border_canvas_plot_left - border_canvas_plot_right) / my_x.length;
-    }
-    canvasCtx.stroke();
-
+    return { x, centro, scale_v };
 }
 
+function drawMicLine(i, x, centro, scale_v, atenuacion) {
+    let y = my_x[i] * atenuacion + centro;
+    if (i == 0) {
+        canvasCtx.moveTo(x, centro);
+    } else {
+        y = centro + (y - centro) * scale_v;
+        if (y > canvas.height / 10 + border_canvas_plot_top - 1) {
+            y = canvas.height / 10 + border_canvas_plot_top - 1;
+        }
+        canvasCtx.lineTo(x, y);
+    }
+    x += (.9 * canvas.width - border_canvas_plot_left - border_canvas_plot_right) / my_x.length;
+    return x;
+}
+
+function PlotMic() {
+    let atenuacion = .4;
+    f_Nyquist = audioCtx.sampleRate / 2;
+    canvasCtx.lineWidth = 1;
+    canvasCtx.fillStyle = '#003B5C';
+    canvasCtx.fillRect(canvas.width / 10 + border_canvas_plot_left, 0, .9 * canvas.width - border_canvas_plot_right - border_canvas_plot_left, canvas.height / 10 + border_canvas_plot_top);
+    canvasCtx.beginPath();
+    canvasCtx.strokeStyle = 'white';
+
+    let { x, centro, scale_v } = getCanvasCoordinates2();
+
+    for (let i = 0; i < my_x.length; i++) {
+        x = drawMicLine(i, x, centro, scale_v, atenuacion);
+    }
+    canvasCtx.stroke();
+}
 function PlotFFT() {
     var scale_h = canvas.width / 1440;
 
@@ -457,27 +473,31 @@ function drawLine(scrolling, X0, deltaX0, y, bin_width) {
     canvasCtx.stroke();
 }
 
-function PlotSpectro1() {
-    fftSize = parseInt(document.getElementById("sizeFFT").value);
-    canvasCtx.lineWidth = 1;
-    canvasCtx.fillStyle = 'white';
+function getCanvasCoordinates() {
     let X0 = Math.floor(canvas.width / 10 + border_canvas_plot_left);
     let deltaX0 = Math.floor(.9 * canvas.width - border_canvas_plot_left - border_canvas_plot_right - bin_width);
     let Y0 = canvas.height / 10 + border_canvas_plot_top;
     var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
 
+    return { X0, deltaX0, Y0, deltaY0 };
+}
+
+function getCanvasSettings() {
     const scale = document.getElementById("scale").value;
     const scrolling = document.getElementById("scrolling").checked;
     const stop = document.getElementById("stop").checked;
 
+    return { scale, scrolling, stop };
+}
+
+function shiftImageData({ X0, deltaX0, Y0, deltaY0 }, { scrolling, stop }) {
     if (!stop) {
         const imgData = canvasCtx.getImageData(X0 + (scrolling ? bin_width : 1), Y0, deltaX0 - bin_width - (scrolling ? 0 : 1), deltaY0);
         canvasCtx.putImageData(imgData, X0 + (scrolling ? 0 : bin_width), Y0);
     }
+}
 
-    const mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
-    const mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
-
+function drawSpectrogramLines({ X0, Y0, deltaY0, deltaX0 }, { scale, scrolling }, mel_i_min, mel_i_max) {
     for (let i = i_min; i < i_max; i++) {
         const y = calculateYPosition(scale, i, Y0, deltaY0, f_min, f_max, mel_i_min, mel_i_max);
         const value = Math.min(my_X_abs[i] / sensibility, 1);
@@ -485,53 +505,73 @@ function PlotSpectro1() {
         canvasCtx.strokeStyle = 'rgb(' + myrgb + ')';
         drawLine(scrolling, X0, deltaX0, y, bin_width);
     }
+}
 
+function PlotSpectro1() {
+    fftSize = parseInt(document.getElementById("sizeFFT").value);
+    canvasCtx.lineWidth = 1;
+    canvasCtx.fillStyle = 'white';
+
+    const { X0, deltaX0, Y0, deltaY0 } = getCanvasCoordinates();
+    const { scale, scrolling, stop } = getCanvasSettings();
+
+    shiftImageData({ X0, deltaX0, Y0, deltaY0 }, { scrolling, stop });
+
+    const mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+    const mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
+
+    drawSpectrogramLines({ X0, Y0, deltaY0, deltaX0 }, { scale, scrolling }, mel_i_min, mel_i_max);
     canvasCtx.font = getFont(10);
 }
 
-function calculateYPosition(value, scale, Y0, deltaY0, f_min, f_max) {
-    if (scale === "Linear") {
-        return Y0 + deltaY0 - deltaY0 * (value - f_min) / (f_max - f_min);
-    } else if (scale === "Mel") {
-        const melValue = 1127.01048 * Math.log(value / 700 + 1);
-        const melMin = 1127.01048 * Math.log(f_min / 700 + 1);
-        const melMax = 1127.01048 * Math.log(f_max / 700 + 1);
-        return Y0 + deltaY0 - deltaY0 * (melValue - melMin) / (melMax - melMin);
-    }
-}
-
-function drawFrequencyMark(y, label, X0) {
-    canvasCtx.textBaseline = "middle";
-    canvasCtx.fillText(label + " Hz", X0 - border_canvas_plot_top, y);
-    canvasCtx.strokeStyle = "black";
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(X0, y);
-    canvasCtx.lineTo(X0 - 4, y);
-    canvasCtx.moveTo(.9 * canvas.width / 10, y);
-    canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
-    canvasCtx.stroke();
-}
-
-function YaxisMarks() {
+function drawYAxisBackground() {
     canvasCtx.fillStyle = 'white';
-    const baseX = canvas.width / 10 + border_canvas_plot_left;
-    const baseY = canvas.height / 10 + border_canvas_plot_top;
-    const deltaY = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
+    let X0 = canvas.width / 10 + border_canvas_plot_left;
+    let Y0 = canvas.height / 10 + border_canvas_plot_top;
+    var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
 
-    canvasCtx.fillRect(.9 * canvas.width / 10, baseY - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, baseY + deltaY);
+    canvasCtx.fillRect(.9 * canvas.width / 10, Y0 - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, Y0 + deltaY0);
     canvasCtx.fillStyle = "black";
     canvasCtx.font = getFont(10);
     canvasCtx.textAlign = 'right';
 
-    const scale = document.getElementById("scale").value;
-    const Yaxis = scale === "Linear" ? [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000] : [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
+    return { X0, Y0, deltaY0 };
+}
 
-    Yaxis.forEach(value => {
-        const y = calculateYPosition(value, scale, baseY, deltaY, f_min, f_max);
-        if (value <= f_max) {
-            drawFrequencyMark(y, value.toString(), baseX);
+function drawYAxisMarks(Yaxis, X0, Y0, deltaY0, calculateY) {
+    for (var j = 0; j < Yaxis.length; j++) {
+        var y = calculateY(Yaxis[j], Y0, deltaY0);
+        if (Yaxis[j] <= f_max) {
+            canvasCtx.textBaseline = "middle";
+            canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
         }
-    });
+        canvasCtx.strokeStyle = "black";
+        canvasCtx.beginPath();
+        if (Yaxis[j] <= f_max) {
+            canvasCtx.moveTo(X0, y);
+            canvasCtx.lineTo(X0 - 4, y);
+            canvasCtx.moveTo(.9 * canvas.width / 10, y);
+            canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
+        }
+        canvasCtx.stroke();
+    }
+}
+
+function YaxisMarks() {
+    const { X0, Y0, deltaY0 } = drawYAxisBackground();
+
+    if (document.getElementById("scale").value == "Linear") {
+        var Yaxis = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000];
+        drawYAxisMarks(Yaxis, X0, Y0, deltaY0, (value, Y0, deltaY0) => Y0 + deltaY0 - deltaY0 * (value - f_min) / (f_max - f_min));
+    } else if (document.getElementById("scale").value == "Mel") {
+        var Yaxis = [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
+        drawYAxisMarks(Yaxis, X0, Y0, deltaY0, (value, Y0, deltaY0) => {
+            var mel_i = 1127.01048 * Math.log(value / 700 + 1)
+            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
+            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
+            return Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+        });
+    }
 }
 
 window.onresize = function (event) {
