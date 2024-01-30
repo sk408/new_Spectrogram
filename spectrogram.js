@@ -158,10 +158,11 @@ function callback(stream) {
     source.connect(analyser);
     // analyser.connect(audioCtx.destination);
 
-    Plot();
+    Plot(analyser, bufferLength, dataTime, dataFrec, my_x, counter, mean, window, BH7, my_X_abs, fft, max_intensity, i_min, i_max, ts, frec1, frec2, max_frec1, index_frec1, frec_max1, canvasCtx, centro, animationId);
+}
 
-    function Plot() {
-        analyser.fftSize = fftSize;
+function Plot(analyser, bufferLength, dataTime, dataFrec, my_x, counter, mean, window, BH7, my_X_abs, fft, max_intensity, i_min, i_max, ts, frec1, frec2, max_frec1, index_frec1, frec_max1, canvasCtx, centro, animationId) {
+            analyser.fftSize = fftSize;
         bufferLength = analyser.frequencyBinCount;
         dataTime = new Uint8Array(bufferLength * 2);
         dataFrec = new Float32Array(bufferLength);
