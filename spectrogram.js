@@ -489,70 +489,49 @@ function PlotSpectro1() {
     canvasCtx.font = getFont(10);
 }
 
+function calculateYPosition(value, scale, Y0, deltaY0, f_min, f_max) {
+    if (scale === "Linear") {
+        return Y0 + deltaY0 - deltaY0 * (value - f_min) / (f_max - f_min);
+    } else if (scale === "Mel") {
+        const melValue = 1127.01048 * Math.log(value / 700 + 1);
+        const melMin = 1127.01048 * Math.log(f_min / 700 + 1);
+        const melMax = 1127.01048 * Math.log(f_max / 700 + 1);
+        return Y0 + deltaY0 - deltaY0 * (melValue - melMin) / (melMax - melMin);
+    }
+}
+
+function drawFrequencyMark(y, label, X0) {
+    canvasCtx.textBaseline = "middle";
+    canvasCtx.fillText(label + " Hz", X0 - border_canvas_plot_top, y);
+    canvasCtx.strokeStyle = "black";
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(X0, y);
+    canvasCtx.lineTo(X0 - 4, y);
+    canvasCtx.moveTo(.9 * canvas.width / 10, y);
+    canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
+    canvasCtx.stroke();
+}
 
 function YaxisMarks() {
-
     canvasCtx.fillStyle = 'white';
-    let X0 = canvas.width / 10 + border_canvas_plot_left;
-    let Y0 = canvas.height / 10 + border_canvas_plot_top;
-    var deltaY0 = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
+    const baseX = canvas.width / 10 + border_canvas_plot_left;
+    const baseY = canvas.height / 10 + border_canvas_plot_top;
+    const deltaY = .9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
 
-    canvasCtx.fillRect(.9 * canvas.width / 10, Y0 - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, Y0 + deltaY0);
+    canvasCtx.fillRect(.9 * canvas.width / 10, baseY - border_canvas_plot_top, .1 * canvas.width / 10 + border_canvas_plot_left, baseY + deltaY);
     canvasCtx.fillStyle = "black";
     canvasCtx.font = getFont(10);
-
     canvasCtx.textAlign = 'right';
 
+    const scale = document.getElementById("scale").value;
+    const Yaxis = scale === "Linear" ? [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000] : [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
 
-    if (document.getElementById("scale").value == "Linear") {
-        var Yaxis = new Array;
-        Yaxis = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000];
-        for (var j = 0; j < Yaxis.length; j++) {
-            var y = Y0 + deltaY0 - deltaY0 * (Yaxis[j] - f_min) / (f_max - f_min);
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.textBaseline = "middle";
-
-                canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
-            }
-            canvasCtx.strokeStyle = "black";
-            canvasCtx.beginPath();
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.moveTo(X0, y);
-                canvasCtx.lineTo(X0 - 4, y);
-                canvasCtx.moveTo(.9 * canvas.width / 10, y);
-                canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
-            }
-            canvasCtx.stroke();
+    Yaxis.forEach(value => {
+        const y = calculateYPosition(value, scale, baseY, deltaY, f_min, f_max);
+        if (value <= f_max) {
+            drawFrequencyMark(y, value.toString(), baseX);
         }
-    } else if (document.getElementById("scale").value == "Mel") {
-        var Yaxis = new Array;
-        Yaxis = [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
-        for (var j = 0; j < Yaxis.length; j++) {
-
-
-            var mel_i = 1127.01048 * Math.log(Yaxis[j] / 700 + 1)
-
-            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
-            var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.textBaseline = "middle";
-
-                canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - border_canvas_plot_top, y);
-            }
-            canvasCtx.strokeStyle = "black";
-            canvasCtx.beginPath();
-            if (Yaxis[j] <= f_max) {
-                canvasCtx.moveTo(X0, y);
-                canvasCtx.lineTo(X0 - 4, y);
-                canvasCtx.moveTo(.9 * canvas.width / 10, y);
-
-                canvasCtx.lineTo(.9 * canvas.width / 10 + 4, y);
-            }
-            canvasCtx.stroke();
-        }
-    }
+    });
 }
 
 window.onresize = function (event) {
