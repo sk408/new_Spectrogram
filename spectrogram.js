@@ -175,20 +175,62 @@ function lpc(signal, order = 8) {
     return a;
 }
 
+function evaluatePolynomial(coeffs, x) {
+    return coeffs.reduce((acc, curr, i) => acc.add(curr.mul(x.pow(coeffs.length - 1 - i))), new Complex(0, 0));
+}
+
+function durandKerner(coeffs, tolerance = 1e-7, maxIterations = 100) {
+    const n = coeffs.length - 1; // Degree of the polynomial
+    let roots = new Array(n);
+
+    // Initial guess for roots
+    for (let i = 0; i < n; i++) {
+        roots[i] = new Complex(0.4 + 0.9 * i, 0.9); // Example initial guess
+    }
+
+    let iter = 0;
+    let maxDiff;
+
+    do {
+        maxDiff = 0;
+        const newRoots = roots.slice();
+
+        for (let i = 0; i < n; i++) {
+            let prod = new Complex(1, 0);
+            for (let j = 0; j < n; j++) {
+                if (i !== j) {
+                    prod = prod.mul(roots[i].sub(roots[j]));
+                }
+            }
+            newRoots[i] = roots[i].sub(evaluatePolynomial(coeffs, roots[i]).div(prod));
+
+            // Calculate the maximum difference to check for convergence
+            const diff = newRoots[i].sub(roots[i]).abs();
+            if (diff > maxDiff) {
+                maxDiff = diff;
+            }
+        }
+
+        roots = newRoots;
+        iter++;
+    } while (maxDiff > tolerance && iter < maxIterations);
+
+    return roots;
+}
+
 function getFormants(signal, sr) {
     let emphasizedSignal = signal.map((val, index) => index === 0 ? val : val - 0.97 * signal[index - 1]);
     let windowedSignal = emphasizedSignal.map((val, index) => val * (0.54 - 0.46 * Math.cos(2 * Math.PI * index / (emphasizedSignal.length - 1))));
 
-    let lpcCoeffs = lpc(windowedSignal, 8);
-    let roots = numeric.roots(lpcCoeffs).filter(root => Math.im(root) >= 0);
+    let lpcCoeffs = lpc(windowedSignal, 8).map(coeff => new Complex(coeff, 0));
+    let roots = durandKerner(lpcCoeffs).filter(root => root.im >= 0);
 
-    let angz = roots.map(root => Math.atan2(Math.im(root), Math.re(root)));
+    let angz = roots.map(root => Math.atan2(root.im, root.re));
     let frqs = angz.map(ang => ang * (sr / (2 * Math.PI)));
 
     frqs.sort((a, b) => a - b);
     return frqs.slice(0, 3);
 }
-
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
@@ -214,7 +256,7 @@ function callback(stream) {
     scriptNode.onaudioprocess = function (audioProcessingEvent) {
         // Get the input buffer
         let inputBuffer = audioProcessingEvent.inputBuffer;
-
+        console.log("test");
         // Loop through the input channels (in this case, just one)
         for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
             let inputData = inputBuffer.getChannelData(channel);
@@ -227,9 +269,9 @@ function callback(stream) {
     const sr = audioCtx.sampleRate;
 
     source.connect(analyser);
-    analyser.connect(scriptNode);
+    source.connect(scriptNode);
 
-    // analyser.connect(audioCtx.destination);
+    scriptNode.connect(audioCtx.destination);
 
     Plot();
 }
@@ -402,8 +444,8 @@ function splitSignal(signal) {
 
 function ensureComplex(array) {
     for (var k = 0; k < array.length; ++k) {
-        if (!(array[k] instanceof Complex))
-            array[k] = new Complex(array[k], 0);
+        if (!(array[k] instanceof Complex2))
+            array[k] = new Complex2(array[k], 0);
     }
     return array;
 }
@@ -415,8 +457,8 @@ function calculateFFT(even, odd, signal) {
         var b = Math.sin(-2 * Math.PI * k / signal.length);
         var temp_k_real = odd[k].re * a - odd[k].im * b;
         var temp_k_imag = odd[k].re * b + odd[k].im * a;
-        var A_k = new Complex(even[k].re + temp_k_real, even[k].im + temp_k_imag);
-        var B_k = new Complex(even[k].re - temp_k_real, even[k].im - temp_k_imag);
+        var A_k = new Complex2(even[k].re + temp_k_real, even[k].im + temp_k_imag);
+        var B_k = new Complex2(even[k].re - temp_k_real, even[k].im - temp_k_imag);
         signal[k] = A_k;
         signal[k + halfLength] = B_k;
     }
@@ -434,7 +476,7 @@ function myFFT(signal) {
     return calculateFFT(even, odd, signal);
 }
 
-function Complex(re, im) {
+function Complex2(re, im) {
     this.re = re;
     this.im = im || 0.0;
 }
