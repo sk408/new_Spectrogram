@@ -266,17 +266,17 @@ function callback(stream) {
         for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
             let inputData = inputBuffer.getChannelData(channel);
     
-            if(counter2 > 12 || counter2 == 0) 
-            { 
-                newFormants = getFormants(Array.from(inputData), audioCtx.sampleRate);
-                counter2 = 1;
-            }
+            // if(counter2 > 12 || counter2 == 0) 
+            // { 
+            //     newFormants = getFormants(Array.from(inputData), audioCtx.sampleRate);
+            //     counter2 = 1;
+            // }
 
-            if (!previousFormants || newFormants.some((formant, index) => Math.abs(formant - previousFormants[index]) / previousFormants[index] > 0.05)) {
-                formants = newFormants.map(Math.round);
-                formantsDisplay.innerText = formants.join(', ');
-                previousFormants = formants;
-            }
+            // if (!previousFormants || newFormants.some((formant, index) => Math.abs(formant - previousFormants[index]) / previousFormants[index] > 0.05)) {
+            //     formants = newFormants.map(Math.round);
+            //     formantsDisplay.innerText = formants.join(', ');
+            //     previousFormants = formants;
+            // }
         }
     };
     const sr = audioCtx.sampleRate;
