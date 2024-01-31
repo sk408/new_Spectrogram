@@ -134,6 +134,61 @@ var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
 var analyser;
 
+function lpc(signal, order = 8) {
+    let autocorr = (function autoCorrelate(buf) {
+        let new_buf = [];
+        let n = buf.length;
+        let r = [];
+    
+        for (let lag = 0; lag < n; lag++){
+            let sum = 0;
+            for (let i = 0; i < n-lag ; i++) {
+                sum += buf[i] * buf[i+lag];
+            }
+            r[lag] = sum/n;
+        }
+        return r;
+    })(signal);
+    
+    let R = autocorr.slice(0, order + 1);
+    let a = Array(order + 1).fill(0);
+    let e = Array(order + 1).fill(0);
+    
+    a[0] = 1.0;
+    e[0] = R[0];
+    
+    for (let k = 1; k <= order; k++) {
+        let lambda = 0;
+        for (let j = 0; j < k; j++) {
+            lambda -= a[j] * R[k - j];
+        }
+        lambda /= e[k - 1];
+        
+        let U = a.slice(0, k);
+        let V = U.slice().reverse().map(x => x * lambda);
+        
+        a = [...U, lambda, ...V];
+        
+        e[k] = (1 - lambda * lambda) * e[k - 1];
+    }
+    
+    return a;
+}
+
+function getFormants(signal, sr) {
+    let emphasizedSignal = signal.map((val, index) => index === 0 ? val : val - 0.97 * signal[index - 1]);
+    let windowedSignal = emphasizedSignal.map((val, index) => val * (0.54 - 0.46 * Math.cos(2 * Math.PI * index / (emphasizedSignal.length - 1))));
+    
+    let lpcCoeffs = lpc(windowedSignal, 8);
+    let roots = numeric.roots(lpcCoeffs).filter(root => Math.im(root) >= 0);
+    
+    let angz = roots.map(root => Math.atan2(Math.im(root), Math.re(root)));
+    let frqs = angz.map(ang => ang * (sr / (2 * Math.PI)));
+    
+    frqs.sort((a, b) => a - b);
+    return frqs.slice(0, 3);
+}
+
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
@@ -155,13 +210,34 @@ function callback(stream) {
     // dataTime = new Uint8Array(bufferLength * 2);
 
     // dataFrec = new Float32Array(bufferLength);
+                let scriptNode = this.audioCtx.createScriptProcessor(16384, 1, 1);
+
+            // Create a buffer to hold the audio data
+        
+            // Set up the onaudioprocess event handler
+            scriptNode.onaudioprocess = function(audioProcessingEvent) {
+                // Get the input buffer
+                let inputBuffer = audioProcessingEvent.inputBuffer;
+
+                // Loop through the input channels (in this case, just one)
+                for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+                    let inputData = inputBuffer.getChannelData(channel);
+
+                    let formants = getFormants(Array.from(inputData), audioCtx.sampleRate);
+                    console.log("Detected formants:", formants);
+                }
+            };
+
     const sr = audioCtx.sampleRate;
 
     source.connect(analyser);
+    analyser.connect(scriptNode);
+
     // analyser.connect(audioCtx.destination);
 
     Plot();
 }
+
 let lastUpdateTime = 0;
 const updateInterval = 1250; // 1/4 second in milliseconds
 var persist;
