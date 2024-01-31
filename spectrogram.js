@@ -234,7 +234,7 @@ function getFormants(signal, sr) {
 let formants;
 let formantsDisplay = document.getElementById('formantsDisplay');
 let previousFormants;
-
+let counter = 0;
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
@@ -260,12 +260,15 @@ function callback(stream) {
     scriptNode.onaudioprocess = function (audioProcessingEvent) {
         // Get the input buffer
         let inputBuffer = audioProcessingEvent.inputBuffer;
-    
+        counter++;
         // Loop through the input channels (in this case, just one)
         for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
             let inputData = inputBuffer.getChannelData(channel);
     
-            let newFormants = getFormants(Array.from(inputData), audioCtx.sampleRate);
+            if(counter > 10) 
+            { 
+                let newFormants = getFormants(Array.from(inputData), audioCtx.sampleRate);
+            }
 
             if (!previousFormants || newFormants.some((formant, index) => Math.abs(formant - previousFormants[index]) / previousFormants[index] > 0.05)) {
                 formants = newFormants.map(Math.round);
