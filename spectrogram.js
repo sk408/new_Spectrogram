@@ -235,6 +235,7 @@ let formants;
 let formantsDisplay = document.getElementById('formantsDisplay');
 let previousFormants;
 let counter2 = 0;
+let newFormants;
 function callback(stream) {
     if (!audioCtx) {
         audioCtx = new AudioContext({
@@ -267,7 +268,7 @@ function callback(stream) {
     
             if(counter2 > 12 || counter2 == 0) 
             { 
-                let newFormants = getFormants(Array.from(inputData), audioCtx.sampleRate);
+                newFormants = getFormants(Array.from(inputData), audioCtx.sampleRate);
                 counter2 = 1;
             }
 
