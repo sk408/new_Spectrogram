@@ -46,8 +46,8 @@ function onKeyDown(e) {
 }
 
 canvas.addEventListener('mousedown', function (event) {
-        createAudioGraphDebounced();
-    });
+    createAudioGraphDebounced();
+});
 window.addEventListener("keydown", onKeyDown);
 canvas.addEventListener('touchstart', (event) => {
 
@@ -139,52 +139,52 @@ function lpc(signal, order = 8) {
         let new_buf = [];
         let n = buf.length;
         let r = [];
-    
-        for (let lag = 0; lag < n; lag++){
+
+        for (let lag = 0; lag < n; lag++) {
             let sum = 0;
-            for (let i = 0; i < n-lag ; i++) {
-                sum += buf[i] * buf[i+lag];
+            for (let i = 0; i < n - lag; i++) {
+                sum += buf[i] * buf[i + lag];
             }
-            r[lag] = sum/n;
+            r[lag] = sum / n;
         }
         return r;
     })(signal);
-    
+
     let R = autocorr.slice(0, order + 1);
     let a = Array(order + 1).fill(0);
     let e = Array(order + 1).fill(0);
-    
+
     a[0] = 1.0;
     e[0] = R[0];
-    
+
     for (let k = 1; k <= order; k++) {
         let lambda = 0;
         for (let j = 0; j < k; j++) {
             lambda -= a[j] * R[k - j];
         }
         lambda /= e[k - 1];
-        
+
         let U = a.slice(0, k);
         let V = U.slice().reverse().map(x => x * lambda);
-        
+
         a = [...U, lambda, ...V];
-        
+
         e[k] = (1 - lambda * lambda) * e[k - 1];
     }
-    
+
     return a;
 }
 
 function getFormants(signal, sr) {
     let emphasizedSignal = signal.map((val, index) => index === 0 ? val : val - 0.97 * signal[index - 1]);
     let windowedSignal = emphasizedSignal.map((val, index) => val * (0.54 - 0.46 * Math.cos(2 * Math.PI * index / (emphasizedSignal.length - 1))));
-    
+
     let lpcCoeffs = lpc(windowedSignal, 8);
     let roots = numeric.roots(lpcCoeffs).filter(root => Math.im(root) >= 0);
-    
+
     let angz = roots.map(root => Math.atan2(Math.im(root), Math.re(root)));
     let frqs = angz.map(ang => ang * (sr / (2 * Math.PI)));
-    
+
     frqs.sort((a, b) => a - b);
     return frqs.slice(0, 3);
 }
@@ -206,27 +206,23 @@ function callback(stream) {
 
     bufferLength = analyser.frequencyBinCount;
 
-    // dataTime = new Float32Array(bufferLength * 2);
-    // dataTime = new Uint8Array(bufferLength * 2);
+    let scriptNode = audioCtx.createScriptProcessor(16384, 1, 1);
 
-    // dataFrec = new Float32Array(bufferLength);
-                let scriptNode = this.audioCtx.createScriptProcessor(16384, 1, 1);
+    // Create a buffer to hold the audio data
 
-            // Create a buffer to hold the audio data
-        
-            // Set up the onaudioprocess event handler
-            scriptNode.onaudioprocess = function(audioProcessingEvent) {
-                // Get the input buffer
-                let inputBuffer = audioProcessingEvent.inputBuffer;
+    // Set up the onaudioprocess event handler
+    scriptNode.onaudioprocess = function (audioProcessingEvent) {
+        // Get the input buffer
+        let inputBuffer = audioProcessingEvent.inputBuffer;
 
-                // Loop through the input channels (in this case, just one)
-                for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
-                    let inputData = inputBuffer.getChannelData(channel);
+        // Loop through the input channels (in this case, just one)
+        for (let channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+            let inputData = inputBuffer.getChannelData(channel);
 
-                    let formants = getFormants(Array.from(inputData), audioCtx.sampleRate);
-                    console.log("Detected formants:", formants);
-                }
-            };
+            let formants = getFormants(Array.from(inputData), audioCtx.sampleRate);
+            console.log("Detected formants:", formants);
+        }
+    };
 
     const sr = audioCtx.sampleRate;
 
@@ -245,151 +241,151 @@ var persist;
 
 function Plot() {
     const currentTime = Date.now();
-            // analyser.fftSize = fftSize;
-        bufferLength = analyser.frequencyBinCount;
-        dataTime = new Uint8Array(bufferLength * 2);
-        dataFrec = new Float32Array(bufferLength);
-        YaxisMarks();
+    // analyser.fftSize = fftSize;
+    bufferLength = analyser.frequencyBinCount;
+    dataTime = new Uint8Array(bufferLength * 2);
+    dataFrec = new Float32Array(bufferLength);
+    YaxisMarks();
 
-        colormap = document.getElementById("colormap").value;
-        f_min = parseFloat(document.getElementById("f_min").value);
-        f_max = parseFloat(document.getElementById("f_max").value);
+    colormap = document.getElementById("colormap").value;
+    f_min = parseFloat(document.getElementById("f_min").value);
+    f_max = parseFloat(document.getElementById("f_max").value);
 
-        bin_width = parseInt(document.getElementById("speed").value);
-        // startTime = performance.now();
+    bin_width = parseInt(document.getElementById("speed").value);
+    // startTime = performance.now();
 
-        analyser.getByteTimeDomainData(dataTime);
-        analyser.getFloatFrequencyData(dataFrec);
+    analyser.getByteTimeDomainData(dataTime);
+    analyser.getFloatFrequencyData(dataFrec);
 
-        counter += 1;
+    counter += 1;
 
-        my_x = [...dataTime];
+    my_x = [...dataTime];
 
-        var mean = 0;
-        for (var i = 0; i < my_x.length; i++) {
-            mean = mean + my_x[i];
-        }
-        mean = mean / my_x.length
-        var window = document.getElementById("window").value;
-        let BH7 = new Array(7).fill(0);
-        BH7[0] = 0.27105140069342;
-        BH7[1] = -0.43329793923448;
-        BH7[2] = 0.21812299954311;
-        BH7[3] = -0.06592544638803;
-        BH7[4] = 0.01081174209837;
-        BH7[5] = -0.00077658482522;
-        BH7[6] = 0.00001388721735;
-        for (var i = 0; i < my_x.length; i++) {
+    var mean = 0;
+    for (var i = 0; i < my_x.length; i++) {
+        mean = mean + my_x[i];
+    }
+    mean = mean / my_x.length
+    var window = document.getElementById("window").value;
+    let BH7 = new Array(7).fill(0);
+    BH7[0] = 0.27105140069342;
+    BH7[1] = -0.43329793923448;
+    BH7[2] = 0.21812299954311;
+    BH7[3] = -0.06592544638803;
+    BH7[4] = 0.01081174209837;
+    BH7[5] = -0.00077658482522;
+    BH7[6] = 0.00001388721735;
+    for (var i = 0; i < my_x.length; i++) {
 
-            if (window == "None") {
-                my_x[i] = (my_x[i] - mean);
-            } else if (window == "Cosine") {
-                my_x[i] = (my_x[i] - mean) * Math.sin(Math.PI * i / my_x.length);
-            } else if (window == "Hanning") {
-                my_x[i] = (my_x[i] - mean) * 0.5 * (1 - Math.cos(2 * Math.PI * i / my_x.length));;
+        if (window == "None") {
+            my_x[i] = (my_x[i] - mean);
+        } else if (window == "Cosine") {
+            my_x[i] = (my_x[i] - mean) * Math.sin(Math.PI * i / my_x.length);
+        } else if (window == "Hanning") {
+            my_x[i] = (my_x[i] - mean) * 0.5 * (1 - Math.cos(2 * Math.PI * i / my_x.length));;
 
-            } else if (window == "BH7") {
+        } else if (window == "BH7") {
 
-                let w = 0;
-                for (let j = 0; j < 7; j++) {
-                    w += BH7[j] * Math.cos(2 * Math.PI * j * i / my_x.length);
-                }
-                my_x[i] = (my_x[i] - mean) * w;
+            let w = 0;
+            for (let j = 0; j < 7; j++) {
+                w += BH7[j] * Math.cos(2 * Math.PI * j * i / my_x.length);
             }
+            my_x[i] = (my_x[i] - mean) * w;
         }
-
-        PlotMic();
-        my_X_abs = new Float64Array(my_x.length / 2).fill(0);
-
-        if (document.getElementById("FFT").value == "myFFT") {
-            fft = myFFT(my_x);
-
-            max_intensity = -100;
-            for (var i = 1; i < my_x.length / 2; i += 1) {
-
-                my_X_abs[i] = 10 * Math.log10((fft[i].re * fft[i].re + fft[i].im * fft[i].im)) - 20;
-                if (my_X_abs[i] > max_intensity) max_intensity = my_X_abs[i];
-            }
-
-        } else if (document.getElementById("FFT").value == "WebAudio") {
-            const aa = document.getElementById('window')
-            aa.value = "None";
-            var my_frec = [...dataFrec];
-            for (var i = 1; i < my_x.length / 2; i += 1) {
-                my_frec[i] = my_frec[i] + 125;
-                if (my_frec[i] > max_intensity) max_intensity = my_frec[i];
-
-            }
-            my_X_abs = my_frec;
-        }
-        i_min = Math.floor(my_X_abs.length * f_min / f_Nyquist);
-        i_max = Math.floor(my_X_abs.length * f_max / f_Nyquist);
-
-
-        var ts = new Array(my_x.length / 2).fill(0);
-        var frec1 = new Array(my_x.length / 2).fill(0);
-        var frec2 = new Array(my_x.length).fill(0);
-        const max_frec1 = Math.max(...my_X_abs);
-        const index_frec1 = my_X_abs.indexOf(max_frec1);
-        frec_max1 = index_frec1 / my_X_abs.length * audioCtx.sampleRate / 2;
-
-        canvasCtx.fillStyle = 'lightblue';
-        canvasCtx.fillRect(border_canvas_plot_top, border_canvas_plot_top, canvas.width / 10 + border_canvas_plot_left - 2 * border_canvas_plot_top, canvas.height / 10 - border_canvas_plot_top);
-        canvasCtx.fillStyle = 'black';
-        canvasCtx.font = getFont(25);
-
-        var centro = (border_canvas_plot_top + canvas.height / 10) / 2;
-
-        canvasCtx.textAlign = 'right';
-       
-        if (currentTime - lastUpdateTime > updateInterval) {
-            // Update the text here
-            // canvasCtx.textAlign = 'right';
-            persist = Math.round(calculateFundamentalFrequencyHPS(my_X_abs, 44100)).toString();
-            canvasCtx.fillText(persist + " Hz", canvas.width / 8, centro);
-    
-            // Update the last update time
-            lastUpdateTime = currentTime;
-        }
-        else { 
-            canvasCtx.fillText(persist + " Hz", canvas.width / 8, centro);
     }
 
-    
-        canvasCtx.fillStyle = "black";
+    PlotMic();
+    my_X_abs = new Float64Array(my_x.length / 2).fill(0);
 
-        PlotFFT();
-        PlotSpectro1();
+    if (document.getElementById("FFT").value == "myFFT") {
+        fft = myFFT(my_x);
 
-        animationId = requestAnimationFrame(Plot);
-    }
-    function calculateFundamentalFrequencyHPS(my_X_abs, sampleRate) {
-        // Convert spectrum to magnitude (if it's not already)
-        let spectrum = my_X_abs.map(x => Math.abs(x));
-    
-        // Number of downsampling steps (harmonics to consider)
-        const steps = 5;
-        let resultSpectrum = spectrum.slice();
-    
-        // Downsample and multiply
-        for (let step = 2; step <= steps; step++) {
-            const downsampled = downsample(spectrum, step);
-            for (let i = 0; i < downsampled.length; i++) {
-                resultSpectrum[i] *= downsampled[i];
-            }
+        max_intensity = -100;
+        for (var i = 1; i < my_x.length / 2; i += 1) {
+
+            my_X_abs[i] = 10 * Math.log10((fft[i].re * fft[i].re + fft[i].im * fft[i].im)) - 20;
+            if (my_X_abs[i] > max_intensity) max_intensity = my_X_abs[i];
         }
-    
-        // Find the index of the maximum value in the result spectrum
-        const maxIndex = resultSpectrum.indexOf(Math.max(...resultSpectrum));
-    
-        // Calculate the fundamental frequency
-        const fundamentalFrequency = maxIndex * sampleRate / my_X_abs.length;
-        return fundamentalFrequency;
+
+    } else if (document.getElementById("FFT").value == "WebAudio") {
+        const aa = document.getElementById('window')
+        aa.value = "None";
+        var my_frec = [...dataFrec];
+        for (var i = 1; i < my_x.length / 2; i += 1) {
+            my_frec[i] = my_frec[i] + 125;
+            if (my_frec[i] > max_intensity) max_intensity = my_frec[i];
+
+        }
+        my_X_abs = my_frec;
     }
-    
-    function downsample(array, factor) {
-        return array.filter((element, index) => index % factor === 0);
+    i_min = Math.floor(my_X_abs.length * f_min / f_Nyquist);
+    i_max = Math.floor(my_X_abs.length * f_max / f_Nyquist);
+
+
+    var ts = new Array(my_x.length / 2).fill(0);
+    var frec1 = new Array(my_x.length / 2).fill(0);
+    var frec2 = new Array(my_x.length).fill(0);
+    const max_frec1 = Math.max(...my_X_abs);
+    const index_frec1 = my_X_abs.indexOf(max_frec1);
+    frec_max1 = index_frec1 / my_X_abs.length * audioCtx.sampleRate / 2;
+
+    canvasCtx.fillStyle = 'lightblue';
+    canvasCtx.fillRect(border_canvas_plot_top, border_canvas_plot_top, canvas.width / 10 + border_canvas_plot_left - 2 * border_canvas_plot_top, canvas.height / 10 - border_canvas_plot_top);
+    canvasCtx.fillStyle = 'black';
+    canvasCtx.font = getFont(25);
+
+    var centro = (border_canvas_plot_top + canvas.height / 10) / 2;
+
+    canvasCtx.textAlign = 'right';
+
+    if (currentTime - lastUpdateTime > updateInterval) {
+        // Update the text here
+        // canvasCtx.textAlign = 'right';
+        persist = Math.round(calculateFundamentalFrequencyHPS(my_X_abs, 44100)).toString();
+        canvasCtx.fillText(persist + " Hz", canvas.width / 8, centro);
+
+        // Update the last update time
+        lastUpdateTime = currentTime;
     }
+    else {
+        canvasCtx.fillText(persist + " Hz", canvas.width / 8, centro);
+    }
+
+
+    canvasCtx.fillStyle = "black";
+
+    PlotFFT();
+    PlotSpectro1();
+
+    animationId = requestAnimationFrame(Plot);
+}
+function calculateFundamentalFrequencyHPS(my_X_abs, sampleRate) {
+    // Convert spectrum to magnitude (if it's not already)
+    let spectrum = my_X_abs.map(x => Math.abs(x));
+
+    // Number of downsampling steps (harmonics to consider)
+    const steps = 5;
+    let resultSpectrum = spectrum.slice();
+
+    // Downsample and multiply
+    for (let step = 2; step <= steps; step++) {
+        const downsampled = downsample(spectrum, step);
+        for (let i = 0; i < downsampled.length; i++) {
+            resultSpectrum[i] *= downsampled[i];
+        }
+    }
+
+    // Find the index of the maximum value in the result spectrum
+    const maxIndex = resultSpectrum.indexOf(Math.max(...resultSpectrum));
+
+    // Calculate the fundamental frequency
+    const fundamentalFrequency = maxIndex * sampleRate / my_X_abs.length;
+    return fundamentalFrequency;
+}
+
+function downsample(array, factor) {
+    return array.filter((element, index) => index % factor === 0);
+}
 
 function splitSignal(signal) {
     var halfLength = signal.length / 2;
