@@ -165,6 +165,15 @@ var i_min;
 var i_max;
 var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
 
+const BH7 = [
+    0.27105140069342,
+    -0.43329793923448,
+    0.21812299954311,
+    -0.06592544638803,
+    0.01081174209837,
+    -0.00077658482522,
+    0.00001388721735
+];
 
 function callback(stream) {
     if (!audioCtx) {
@@ -236,14 +245,6 @@ function callback(stream) {
         }
         mean = mean / my_x.length
         var window = document.getElementById("window").value;
-        let BH7 = new Array(7).fill(0);
-        BH7[0] = 0.27105140069342;
-        BH7[1] = -0.43329793923448;
-        BH7[2] = 0.21812299954311;
-        BH7[3] = -0.06592544638803;
-        BH7[4] = 0.01081174209837;
-        BH7[5] = -0.00077658482522;
-        BH7[6] = 0.00001388721735;
         for (var i = 0; i < my_x.length; i++) {
             //if (document.getElementById("window").checked == true) {
             if (window == "None") {
