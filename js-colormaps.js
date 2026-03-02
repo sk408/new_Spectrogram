@@ -19458,8 +19458,7 @@ function evaluate_cmap(x, name, reverse) {
 function interpolated(x, colors) {
     let lo = Math.floor(x * (colors.length - 1));
     let hi = Math.ceil(x * (colors.length - 1));
-    //let r = Math.round((colors[lo][0] + colors[hi][0]) / 2 * 255);
-    r = 250;
+    let r = Math.round((colors[lo][0] + colors[hi][0]) / 2 * 255);
     let g = Math.round((colors[lo][1] + colors[hi][1]) / 2 * 255);
     let b = Math.round((colors[lo][2] + colors[hi][2]) / 2 * 255);
     return [r, g, b];
@@ -19481,4 +19480,8 @@ function partial(name) {
         return function(x) { return evaluate_cmap(x, name, false) };
     }
 
+}
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports.qualitative = qualitative;
+    module.exports.evaluate_cmap = evaluate_cmap;
 }
