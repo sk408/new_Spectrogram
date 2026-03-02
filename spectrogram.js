@@ -720,7 +720,6 @@ function SetDefaultWindow() {
         const aa = document.getElementById('window')
         aa.value = "BH7";
     }
-    console.log("jj");
 }
 
 function ColormapMarks() {
