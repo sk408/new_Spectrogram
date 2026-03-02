@@ -760,3 +760,7 @@ function getFont(s) {
     var size = canvas.width * ratio;   
     return (size|0) + 'px sans-serif'; 
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { HSLToRGB };
+}
