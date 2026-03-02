@@ -84,16 +84,6 @@ canvas.addEventListener('touchend', handleGesture);
 if (!navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
   } else {
-    // let chunks = [];
-
-    // let onSuccess = function(stream) {
-    //     callback(stream);
-    // }
-
-    // let onError = function(err) {
-    //     console.log('The following error occured: ' + err);
-    // }
-
     navigator.mediaDevices.enumerateDevices()
     .then(devices => {
         this.mics = devices.filter(device => device.kind === 'audioinput');
@@ -199,8 +189,12 @@ function callback(stream) {
     function Plot() {
         analyser.fftSize = fftSize;
         bufferLength = analyser.frequencyBinCount;
-        dataTime = new Uint8Array(bufferLength * 2);
-        dataFrec = new Float32Array(bufferLength);
+        if (!dataTime || dataTime.length !== bufferLength * 2 || !(dataTime instanceof Uint8Array)) {
+            dataTime = new Uint8Array(bufferLength * 2);
+        }
+        if (!dataFrec || dataFrec.length !== bufferLength || !(dataFrec instanceof Float32Array)) {
+            dataFrec = new Float32Array(bufferLength);
+        }
         YaxisMarks();
 
         colormap = document.getElementById("colormap").value;
