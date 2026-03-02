@@ -530,14 +530,23 @@ function PlotSpectro1() {
     var y;
 
     var i_caja = 0;
+
+    let scaleValue = document.getElementById("scale").value;
+    let isLinear = scaleValue == "Linear";
+    let isMel = scaleValue == "Mel";
+    let isScrolling = document.getElementById("scrolling").checked == true;
+
+    var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+    var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
+    var deltaF = f_max - f_min;
+    var deltaI = i_max - i_min;
+
     for (let i = i_min; i < i_max; i++) {
-        if (document.getElementById("scale").value == "Linear") {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
-            var freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min)
-            var mel_i = 1127.01048 * Math.log(freq / 700 + 1)
-            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
+        if (isLinear) {
+            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / deltaI;
+        } else if (isMel) {
+            var freq = f_min + deltaF * (i - i_min) / deltaI;
+            var mel_i = 1127.01048 * Math.log(freq / 700 + 1);
 
             y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
         }
@@ -551,7 +560,7 @@ function PlotSpectro1() {
 
 
         canvasCtx.beginPath();
-        if (document.getElementById("scrolling").checked == true) {
+        if (isScrolling) {
             canvasCtx.moveTo(X0 + deltaX0, y);
 
             canvasCtx.lineTo(X0 + deltaX0 - bin_width, y);
