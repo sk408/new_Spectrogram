@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Benchmark</title>
+</head>
+<body>
+    <select id="scale">
+        <option value="Linear">Linear</option>
+        <option value="Mel" selected>Mel</option>
+    </select>
+    <select id="sensibility">
+        <option value="50">50</option>
+    </select>
+    <script>
+        function benchmark() {
+            var Y0 = 100;
+            var deltaY0 = 200;
+            var i_min = 0;
+            var i_max = 10000;
+            var f_min = 20;
+            var f_max = 20000;
+            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
+
+            var y;
+
+            var start = performance.now();
+            for (let j = 0; j < 100; j++) {
+                for (let i = i_min; i < i_max; i++) {
+                    var freq2 = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
+                    if (document.getElementById("scale").value == "Linear") {
+                        y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
+                    } else if (document.getElementById("scale").value == "Mel") {
+                        var mel_i = 1127.01048 * Math.log(freq2 / 700 + 1);
+                        y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+                    }
+                }
+            }
+            var end = performance.now();
+            console.log("Original loop took: " + (end - start) + "ms");
+
+            var start2 = performance.now();
+            for (let j = 0; j < 100; j++) {
+                var scaleValue = document.getElementById("scale").value;
+                for (let i = i_min; i < i_max; i++) {
+                    var freq2 = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
+                    if (scaleValue == "Linear") {
+                        y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
+                    } else if (scaleValue == "Mel") {
+                        var mel_i = 1127.01048 * Math.log(freq2 / 700 + 1);
+                        y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+                    }
+                }
+            }
+            var end2 = performance.now();
+            console.log("Optimized loop took: " + (end2 - start2) + "ms");
+        }
+        benchmark();
+    </script>
+</body>
+</html>
