@@ -84,16 +84,6 @@ canvas.addEventListener('touchend', handleGesture);
 if (!navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
   } else {
-    // let chunks = [];
-
-    // let onSuccess = function(stream) {
-    //     callback(stream);
-    // }
-
-    // let onError = function(err) {
-    //     console.log('The following error occured: ' + err);
-    // }
-
     navigator.mediaDevices.enumerateDevices()
     .then(devices => {
         this.mics = devices.filter(device => device.kind === 'audioinput');
@@ -199,8 +189,12 @@ function callback(stream) {
     function Plot() {
         analyser.fftSize = fftSize;
         bufferLength = analyser.frequencyBinCount;
-        dataTime = new Uint8Array(bufferLength * 2);
-        dataFrec = new Float32Array(bufferLength);
+        if (!dataTime || dataTime.length !== bufferLength * 2 || !(dataTime instanceof Uint8Array)) {
+            dataTime = new Uint8Array(bufferLength * 2);
+        }
+        if (!dataFrec || dataFrec.length !== bufferLength || !(dataFrec instanceof Float32Array)) {
+            dataFrec = new Float32Array(bufferLength);
+        }
         YaxisMarks();
 
         colormap = document.getElementById("colormap").value;
@@ -531,16 +525,23 @@ function PlotSpectro1() {
     var y;
 
     var i_caja = 0;
-    var scaleValue = document.getElementById("scale").value;
-    var isScrolling = document.getElementById("scrolling").checked;
+
+    let scaleValue = document.getElementById("scale").value;
+    let isLinear = scaleValue == "Linear";
+    let isMel = scaleValue == "Mel";
+    let isScrolling = document.getElementById("scrolling").checked == true;
+
+    var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+    var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
+    var deltaF = f_max - f_min;
+    var deltaI = i_max - i_min;
+
     for (let i = i_min; i < i_max; i++) {
-        if (scaleValue == "Linear") {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (scaleValue == "Mel") {
-            var freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min)
-            var mel_i = 1127.01048 * Math.log(freq / 700 + 1)
-            var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
-            var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
+        if (isLinear) {
+            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / deltaI;
+        } else if (isMel) {
+            var freq = f_min + deltaF * (i - i_min) / deltaI;
+            var mel_i = 1127.01048 * Math.log(freq / 700 + 1);
 
             y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
         }
@@ -554,7 +555,7 @@ function PlotSpectro1() {
 
 
         canvasCtx.beginPath();
-        if (isScrolling == true) {
+        if (isScrolling) {
             canvasCtx.moveTo(X0 + deltaX0, y);
 
             canvasCtx.lineTo(X0 + deltaX0 - bin_width, y);

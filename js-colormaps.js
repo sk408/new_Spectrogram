@@ -19482,3 +19482,7 @@ function partial(name) {
     }
 
 }
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports.qualitative = qualitative;
+    module.exports.evaluate_cmap = evaluate_cmap;
+}
