@@ -492,7 +492,7 @@ function PlotFFT() {
         sensibility_temp = sensibility;
     }
     ColormapMarks();
-    document.getElementById("output_sensibility").innerHTML = Math.floor(sensibility_temp);
+    document.getElementById("output_sensibility").textContent = Math.floor(sensibility_temp);
     document.getElementById("sensibility").value = Math.floor(sensibility_temp);
 
     canvasCtx.moveTo(-sensibility_temp *scale_h + .9 * canvas.width / 10, Y0);
