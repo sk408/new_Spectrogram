@@ -220,7 +220,7 @@ function callback(stream) {
 
         counter += 1;
 
-        my_x = [...dataTime];
+        my_x = new Float32Array(dataTime);
 
         const sampled_time = my_x.length / sr * 1000;
 
@@ -267,7 +267,7 @@ function callback(stream) {
         my_X_abs = new Float64Array(my_x.length / 2).fill(0);
 
         if (document.getElementById("FFT").value == "myFFT") {
-            fft = myFFT(my_x);
+            fft = myFFT(Array.from(my_x));
 
             max_intensity = -100;
             for (var i = 1; i < my_x.length / 2; i += 1) {
@@ -279,7 +279,7 @@ function callback(stream) {
         } else if (document.getElementById("FFT").value == "WebAudio") {
             const aa = document.getElementById('window')
             aa.value = "None";
-            var my_frec = [...dataFrec];
+            var my_frec = new Float32Array(dataFrec);
             for (var i = 1; i < my_x.length / 2; i += 1) {
                 my_frec[i] = my_frec[i] + 125;
                 if (my_frec[i] > max_intensity) max_intensity = my_frec[i];
