@@ -585,6 +585,12 @@ function PlotFFT() {
   if (max_intensity > sensibility) {
     sensibility_temp = max_intensity;
     ColormapMarks();
+    document.getElementById("output_sensibility").textContent = Math.floor(sensibility_temp);
+    document.getElementById("sensibility").value = Math.floor(sensibility_temp);
+
+    canvasCtx.moveTo(-sensibility_temp *scale_h + .9 * canvas.width / 10, Y0);
+    canvasCtx.lineTo(-sensibility_temp * scale_h + .9 * canvas.width / 10, Y0 + deltaY0);
+    canvasCtx.stroke();
   } else {
     sensibility_temp = sensibility;
   }
