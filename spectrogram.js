@@ -146,6 +146,7 @@ var analyser;
 var bufferLength;
 var dataTime;
 var dataFrec;
+var prevBufferLength = 0;
 var fftSize = parseInt(document.getElementById("sizeFFT").value);
 
 var colormap;
@@ -199,8 +200,11 @@ function callback(stream) {
     function Plot() {
         analyser.fftSize = fftSize;
         bufferLength = analyser.frequencyBinCount;
-        dataTime = new Uint8Array(bufferLength * 2);
-        dataFrec = new Float32Array(bufferLength);
+        if (bufferLength !== prevBufferLength) {
+            dataTime = new Uint8Array(bufferLength * 2);
+            dataFrec = new Float32Array(bufferLength);
+            prevBufferLength = bufferLength;
+        }
         YaxisMarks();
 
         colormap = document.getElementById("colormap").value;
