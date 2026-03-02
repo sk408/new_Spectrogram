@@ -113,6 +113,23 @@ if (!navigator.mediaDevices?.enumerateDevices) {
 
       // Select the first microphone by default
       this.selectAndStartMic(this.mics[0]?.deviceId);
+    console.log("enumerateDevices() not supported.");
+  } else {
+    navigator.mediaDevices.enumerateDevices()
+    .then(devices => {
+        this.mics = devices.filter(device => device.kind === 'audioinput');
+
+        // Populate the microphone dropdown
+        const microphoneSelect = document.getElementById('microphone');
+        this.mics.forEach((mic, index) => {
+            const option = document.createElement('option');
+            option.value = mic.deviceId;
+            option.text = mic.label || `Microphone ${index + 1}`;
+            microphoneSelect.appendChild(option);
+        });
+
+        // Select the first microphone by default
+        this.selectAndStartMic(this.mics[0]?.deviceId);
     })
     .catch((err) => console.log(err));
 }
@@ -166,17 +183,58 @@ var f_min;
 var f_max;
 var i_min;
 var i_max;
-var num_bin = Math.floor(
-  (900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width,
-);
+var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
+
+const BH7 = [
+    0.27105140069342,
+    -0.43329793923448,
+    0.21812299954311,
+    -0.06592544638803,
+    0.01081174209837,
+    -0.00077658482522,
+    0.00001388721735
+];
 
 function callback(stream) {
-  if (!audioCtx) {
-    audioCtx = new AudioContext({
-      latencyHint: "interactive",
-      sampleRate: 44100,
-    });
-  }
+    if (!audioCtx) {
+        audioCtx = new AudioContext({
+            latencyHint: 'interactive',
+            sampleRate: 44100,
+        });
+
+    }
+
+    const source = audioCtx.createMediaStreamSource(stream);
+
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = fftSize;
+    analyser.minDecibels = -40;
+
+    bufferLength = analyser.frequencyBinCount;
+
+    dataTime = new Float32Array(bufferLength * 2);
+    //const dataFrec = new Float32Array(bufferLength);
+    dataFrec = new Float32Array(bufferLength);
+    const sr = audioCtx.sampleRate;
+
+    //document.getElementById("console4").innerHTML = "Velocidad de Muestreo en Hz = " + sr.toString();
+    message0 = "Sampling rate: " + sr.toString() + " Hz";
+    source.connect(analyser);
+    //analyser.connect(audioCtx.destination);
+
+
+    Plot();
+
+    function Plot() {
+        analyser.fftSize = fftSize;
+        bufferLength = analyser.frequencyBinCount;
+        if (!dataTime || dataTime.length !== bufferLength * 2 || !(dataTime instanceof Uint8Array)) {
+            dataTime = new Uint8Array(bufferLength * 2);
+        }
+        if (!dataFrec || dataFrec.length !== bufferLength || !(dataFrec instanceof Float32Array)) {
+            dataFrec = new Float32Array(bufferLength);
+        }
+        YaxisMarks();
 
   const source = audioCtx.createMediaStreamSource(stream);
 
@@ -223,9 +281,30 @@ function callback(stream) {
 
     //document.getElementById("console5").innerHTML = "Número de Muestras en Tiempo: " + my_x.length.toString() + " Tiempo Muestreado = " + (Math.round(sampled_time)).toString();
 
-    message1 = "Buffer size in time domain: " + my_x.length.toString();
-    message1 +=
-      "\nSampled time = " + Math.round(sampled_time).toString() + " ms";
+        var mean = 0;
+        for (var i = 0; i < my_x.length; i++) {
+            mean = mean + my_x[i];
+        }
+        mean = mean / my_x.length
+        var window = document.getElementById("window").value;
+        for (var i = 0; i < my_x.length; i++) {
+            //if (document.getElementById("window").checked == true) {
+            if (window == "None") {
+                my_x[i] = (my_x[i] - mean);
+            } else if (window == "Cosine") {
+                my_x[i] = (my_x[i] - mean) * Math.sin(Math.PI * i / my_x.length);
+            } else if (window == "Hanning") {
+                my_x[i] = (my_x[i] - mean) * 0.5 * (1 - Math.cos(2 * Math.PI * i / my_x.length));;
+
+            } else if (window == "BH7") {
+
+                let w = 0;
+                for (let j = 0; j < 7; j++) {
+                    w += BH7[j] * Math.cos(2 * Math.PI * j * i / my_x.length);
+                }
+                my_x[i] = (my_x[i] - mean) * w;
+            }
+        }
 
     var mean = 0;
     for (var i = 0; i < my_x.length; i++) {
@@ -578,6 +657,41 @@ function PlotSpectro1() {
         deltaY0 -
         (deltaY0 * (mel_i - mel_i_min)) / (mel_i_max - mel_i_min);
     }
+    var y;
+
+    var i_caja = 0;
+
+    let scaleValue = document.getElementById("scale").value;
+    let isLinear = scaleValue == "Linear";
+    let isMel = scaleValue == "Mel";
+    let isScrolling = document.getElementById("scrolling").checked == true;
+
+    var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
+    var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
+    var deltaF = f_max - f_min;
+    var deltaI = i_max - i_min;
+
+    for (let i = i_min; i < i_max; i++) {
+        if (isLinear) {
+            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / deltaI;
+        } else if (isMel) {
+            var freq = f_min + deltaF * (i - i_min) / deltaI;
+            var mel_i = 1127.01048 * Math.log(freq / 700 + 1);
+
+            y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
+        }
+
+
+        var value = my_X_abs[i] / (sensibility);
+        if (value > 1) value = 1;
+
+        var myrgb = evaluate_cmap(value, colormap, false);
+        canvasCtx.strokeStyle = 'rgb(' + myrgb + ')';
+
+
+        canvasCtx.beginPath();
+        if (isScrolling) {
+            canvasCtx.moveTo(X0 + deltaX0, y);
 
     var value = my_X_abs[i] / sensibility;
     if (value > 1) value = 1;
