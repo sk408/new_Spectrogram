@@ -6,16 +6,24 @@ var message3 = "  ";
 var message4 = "  ";
 
 
-const canvas = document.querySelector('.canvas');
-const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
-const mainSection = document.querySelector('.main-controls');
+let canvas;
+let canvasCtx;
+let mainSection;
+
+if (typeof document !== 'undefined') {
+  canvas = document.querySelector('.canvas');
+  canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
+  mainSection = document.querySelector('.main-controls');
+}
 var border_canvas_plot_left ;
 
 var border_canvas_plot_right ;
 var border_canvas_plot_bottom ;
 var border_canvas_plot_top ;
 
-applyOrientation();
+if (typeof window !== 'undefined') {
+  applyOrientation();
+}
 
 var imageSpectrogram = new Array(40).fill(0);
 var counter = 0;
@@ -62,18 +70,20 @@ function onKeyDown(e) {
     createAudioGraphDebounced();
 }
 
-canvas.addEventListener('mousedown', function (event) {
-  if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
-    createAudioGraphDebounced();
-  }
-});
-canvas.addEventListener("keydown", onKeyDown);
-canvas.addEventListener('touchstart', (event) => {
-  touchstartX = event.changedTouches[0].screenX;
-  touchstartY = event.changedTouches[0].screenY;
-  time = new Date().getTime();
-});
-canvas.addEventListener('touchend', handleGesture);
+if (typeof document !== 'undefined') {
+  canvas.addEventListener('mousedown', function (event) {
+    if (event.target.type !== 'checkbox' && event.target.type !== 'range') {
+      createAudioGraphDebounced();
+    }
+  });
+  canvas.addEventListener("keydown", onKeyDown);
+  canvas.addEventListener('touchstart', (event) => {
+    touchstartX = event.changedTouches[0].screenX;
+    touchstartY = event.changedTouches[0].screenY;
+    time = new Date().getTime();
+  });
+  canvas.addEventListener('touchend', handleGesture);
+}
 
 //const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
 //var my_x;
@@ -81,7 +91,7 @@ canvas.addEventListener('touchend', handleGesture);
 //main block for doing the audio recording
 
 
-if (!navigator.mediaDevices?.enumerateDevices) {
+if (typeof navigator !== 'undefined' && !navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
   } else {
     // let chunks = [];
@@ -113,6 +123,7 @@ if (!navigator.mediaDevices?.enumerateDevices) {
     .catch(err => console.log(err));
  
 }
+
 let currentStream;
 
 function selectAndStartMic(selected) {
@@ -146,7 +157,13 @@ var analyser;
 var bufferLength;
 var dataTime;
 var dataFrec;
-var fftSize = parseInt(document.getElementById("sizeFFT").value);
+var fftSize;
+
+if (typeof document !== 'undefined') {
+    fftSize = parseInt(document.getElementById("sizeFFT").value);
+} else {
+    fftSize = 2048; // Default for tests
+}
 
 var colormap;
 var frec_max1;
@@ -642,9 +659,11 @@ function YaxisMarks() {
 
 
 
-window.onresize = function(event) {
+if (typeof window !== 'undefined') {
+    window.onresize = function(event) {
         applyOrientation();
     }
+}
 
 function applyOrientation() {
     if (window.innerHeight > window.innerWidth) {
@@ -759,4 +778,11 @@ function getFont(s) {
     var ratio = s / fontBase;   
     var size = canvas.width * ratio;   
     return (size|0) + 'px sans-serif'; 
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        myFFT,
+        Complex
+    };
 }
