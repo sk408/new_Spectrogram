@@ -84,16 +84,6 @@ canvas.addEventListener('touchend', handleGesture);
 if (!navigator.mediaDevices?.enumerateDevices) {
     console.log("enumerateDevices() not supported.");
   } else {
-    // let chunks = [];
-
-    // let onSuccess = function(stream) {
-    //     callback(stream);
-    // }
-
-    // let onError = function(err) {
-    //     console.log('The following error occured: ' + err);
-    // }
-
     navigator.mediaDevices.enumerateDevices()
     .then(devices => {
         this.mics = devices.filter(device => device.kind === 'audioinput');
