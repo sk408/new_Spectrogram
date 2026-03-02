@@ -431,11 +431,12 @@ function PlotFFT() {
 
     var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
     var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1)
+    var scaleValue = document.getElementById("scale").value;
     for (let i = i_min; i < i_max; i++) {
         var freq2 = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min);
-        if (document.getElementById("scale").value == "Linear") {
+        if (scaleValue == "Linear") {
             y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
+        } else if (scaleValue == "Mel") {
             var mel_i = 1127.01048 * Math.log(freq2 / 700 + 1)
 
             var y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
@@ -463,9 +464,9 @@ function PlotFFT() {
     sensibility = document.getElementById("sensibility").value;;
     for (let i = i_min; i < i_max; i++) {
 
-        if (document.getElementById("scale").value == "Linear") {
+        if (scaleValue == "Linear") {
             y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
+        } else if (scaleValue == "Mel") {
             var freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min)
 
             var mel_i = 1127.01048 * Math.log(freq / 700 + 1)
@@ -530,10 +531,12 @@ function PlotSpectro1() {
     var y;
 
     var i_caja = 0;
+    var scaleValue = document.getElementById("scale").value;
+    var isScrolling = document.getElementById("scrolling").checked;
     for (let i = i_min; i < i_max; i++) {
-        if (document.getElementById("scale").value == "Linear") {
+        if (scaleValue == "Linear") {
             y = Y0 + deltaY0 - deltaY0 * (i - i_min) / (i_max - i_min);
-        } else if (document.getElementById("scale").value == "Mel") {
+        } else if (scaleValue == "Mel") {
             var freq = f_min + (f_max - f_min) * (i - i_min) / (i_max - i_min)
             var mel_i = 1127.01048 * Math.log(freq / 700 + 1)
             var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1)
@@ -551,7 +554,7 @@ function PlotSpectro1() {
 
 
         canvasCtx.beginPath();
-        if (document.getElementById("scrolling").checked == true) {
+        if (isScrolling == true) {
             canvasCtx.moveTo(X0 + deltaX0, y);
 
             canvasCtx.lineTo(X0 + deltaX0 - bin_width, y);
@@ -572,7 +575,7 @@ function PlotSpectro1() {
 
 
 function YaxisMarks() {
-    
+    var scaleValue = document.getElementById("scale").value;
     canvasCtx.fillStyle = 'white';
     let X0 = canvas.width / 10 + border_canvas_plot_left;
     let Y0 = canvas.height / 10 + border_canvas_plot_top;
@@ -585,7 +588,7 @@ function YaxisMarks() {
     canvasCtx.textAlign = 'right';
 
 
-    if (document.getElementById("scale").value == "Linear") {
+    if (scaleValue == "Linear") {
         var Yaxis = new Array;
         Yaxis = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000];
         for (var j = 0; j < Yaxis.length; j++) {
@@ -605,7 +608,7 @@ function YaxisMarks() {
             }
             canvasCtx.stroke();
         }
-    } else if (document.getElementById("scale").value == "Mel") {
+    } else if (scaleValue == "Mel") {
         var Yaxis = new Array;
         Yaxis = [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
         let y0 = canvas.height - border_canvas_plot_bottom;
