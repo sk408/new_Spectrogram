@@ -63,7 +63,7 @@ let analyserNode = null;
 // --- Rendering State ---
 let bufferLength = 0;
 let fftSize = 8192;
-let colormap = "hot";
+let colormap = "inferno";
 let fNyquist = 22050;
 let fMin = 0;
 let fMax = 9000;
@@ -172,7 +172,7 @@ function populateColormaps() {
   }
   select.appendChild(otherGroup);
 
-  select.value = "hot";
+  select.value = "inferno";
 }
 
 // ============================================================
@@ -691,22 +691,27 @@ function plotSpectro() {
     }
   }
 
-  // Draw new frequency column using ImageData for better performance
+  // Draw new frequency column using ImageData — iterate pixel rows to avoid gaps
   const colX = isScrolling ? X0 + deltaX0 - binWidth : X0;
-  const imgData = ctx.createImageData(binWidth, Math.ceil(deltaY0));
+  const height = Math.ceil(deltaY0);
+  const imgData = ctx.createImageData(binWidth, height);
   const pixels = imgData.data;
 
-  for (let i = iMin; i < iMax; i++) {
-    let y;
+  for (let row = 0; row < height; row++) {
+    // Map pixel row → frequency
+    const frac = 1 - row / deltaY0;
+    let freq;
     if (isLinear) {
-      y = Y0 + deltaY0 - (deltaY0 * (i - iMin)) / deltaI;
+      freq = fMin + frac * deltaF;
     } else {
-      const freq = fMin + (deltaF * (i - iMin)) / deltaI;
-      const mel = melScale(freq);
-      y = Y0 + deltaY0 - (deltaY0 * (mel - melMin)) / melRange;
+      freq = inverseMelScale(melMin + frac * melRange);
     }
 
-    let value = myXAbs[i] / sensibility;
+    // Map frequency → FFT bin index
+    const binIdx = Math.round((freq / fNyquist) * myXAbs.length);
+    if (binIdx < 1 || binIdx >= myXAbs.length) continue;
+
+    let value = myXAbs[binIdx] / sensibility;
     if (value > 1) value = 1;
     if (value < 0) value = 0;
 
@@ -715,26 +720,20 @@ function plotSpectro() {
 
     // Audiogram masking: dim pixels below patient's hearing threshold
     if (audiogramEnabled && value > 0.01) {
-      const freq = fMin + (deltaF * (i - iMin)) / deltaI;
-      const dBSPL = myXAbs[i];
+      const dBSPL = myXAbs[binIdx];
       if (!audiogram.isAudible(dBSPL, freq)) {
-        // Show inaudible sounds as dim red tint
         r = Math.floor(r * 0.2 + 80);
         g = Math.floor(g * 0.1);
         b = Math.floor(b * 0.1);
       }
     }
 
-    // Map y to ImageData row and fill binWidth columns
-    const row = Math.floor(y - Y0);
-    if (row >= 0 && row < imgData.height) {
-      for (let bx = 0; bx < binWidth; bx++) {
-        const idx = (row * binWidth + bx) * 4;
-        pixels[idx] = r;
-        pixels[idx + 1] = g;
-        pixels[idx + 2] = b;
-        pixels[idx + 3] = 255;
-      }
+    for (let bx = 0; bx < binWidth; bx++) {
+      const idx = (row * binWidth + bx) * 4;
+      pixels[idx] = r;
+      pixels[idx + 1] = g;
+      pixels[idx + 2] = b;
+      pixels[idx + 3] = 255;
     }
   }
 
@@ -870,49 +869,12 @@ function drawOverlay() {
 }
 
 function drawThresholdLine(X0, Y0, deltaX0, deltaY0) {
+  // Draw severity-colored horizontal lines at each audiometric frequency
   octx.save();
   octx.beginPath();
   octx.rect(X0, Y0, deltaX0, deltaY0);
   octx.clip();
 
-  // Sample threshold at many frequencies and draw the line
-  octx.beginPath();
-  octx.strokeStyle = "rgba(255, 255, 0, 0.8)";
-  octx.lineWidth = 2;
-  octx.setLineDash([6, 4]);
-
-  let first = true;
-  for (let f = Math.max(fMin, 100); f <= fMax; f += 20) {
-    const threshold = audiogram.ear === "both"
-      ? audiogram.getWorstThreshold(f)
-      : audiogram.getThreshold(f);
-
-    // Map threshold dB HL to Y position
-    // threshold dB HL roughly maps to: the fraction of sensibility where sound becomes inaudible
-    // Higher threshold = more hearing loss = lower on the spectrogram
-    const threshFraction = (threshold + 20) / sensibility; // +20 for SPL-to-HL offset
-    const y = Y0 + deltaY0 - deltaY0 * (1 - threshFraction);
-
-    const x = freqToY(f, Y0, deltaY0); // Get x position based on freq... actually we need freq->Y
-    const yPos = freqToY(f, Y0, deltaY0);
-
-    // We want to plot threshold vs frequency, but the spectrogram X axis is time
-    // Instead, draw the threshold line on the Y axis (frequency) with the dB mapped
-    // Actually: we draw a horizontal band showing WHERE sounds become inaudible
-    // The threshold line shows: at each frequency, what's the minimum dB needed
-    // Map to spectrogram coordinates
-    if (first) {
-      octx.moveTo(X0, yPos);
-      first = true; // will set after we actually compute right
-    }
-  }
-
-  // Better approach: draw threshold markers on the Y-axis area
-  // For each audiometric frequency, draw a marker showing the threshold level
-  octx.restore();
-
-  // Draw threshold indicators on the frequency axis
-  octx.save();
   for (let fi = 0; fi < AUDIO_FREQS.length; fi++) {
     const freq = AUDIO_FREQS[fi];
     if (freq < fMin || freq > fMax) continue;
@@ -923,46 +885,72 @@ function drawThresholdLine(X0, Y0, deltaX0, deltaY0) {
       : audiogram.getThreshold(freq);
     const severity = audiogram.getSeverity(threshold);
 
-    // Draw a colored marker at this frequency
-    octx.fillStyle = severity.color.replace("0.35", "0.9");
-    octx.fillRect(X0 - 3, y - 2, deltaX0 + 6, 1);
-
-    // Draw threshold dB label
-    octx.fillStyle = "rgba(255, 255, 0, 0.9)";
-    octx.font = ((canvas.width * 9 / 1000) | 0) + "px sans-serif";
-    octx.textAlign = "left";
-    octx.textBaseline = "middle";
-    octx.fillText(threshold + " dB HL", X0 + deltaX0 + 4, y);
+    // Horizontal dashed line across spectrogram at this frequency
+    octx.strokeStyle = severity.color.replace("0.35", "0.6");
+    octx.lineWidth = 1;
+    octx.setLineDash([4, 8]);
+    octx.beginPath();
+    octx.moveTo(X0, y);
+    octx.lineTo(X0 + deltaX0, y);
+    octx.stroke();
   }
-  octx.restore();
 
-  // Draw the audiogram curve as a connected line on the spectrogram
-  octx.save();
+  // Draw connected audiogram curve along left edge
+  // X offset represents threshold magnitude (more loss = further right)
   octx.beginPath();
-  octx.rect(X0, Y0, deltaX0, deltaY0);
-  octx.clip();
+  octx.strokeStyle = "rgba(255, 255, 0, 0.8)";
+  octx.lineWidth = 2.5;
+  octx.setLineDash([]);
 
-  octx.beginPath();
-  octx.strokeStyle = "rgba(255, 255, 0, 0.7)";
-  octx.lineWidth = 2;
-  octx.setLineDash([8, 4]);
-
-  first = true;
+  let first = true;
   for (let fi = 0; fi < AUDIO_FREQS.length; fi++) {
     const freq = AUDIO_FREQS[fi];
     if (freq < fMin || freq > fMax) continue;
 
     const y = freqToY(freq, Y0, deltaY0);
+    const threshold = audiogram.ear === "both"
+      ? audiogram.getWorstThreshold(freq)
+      : audiogram.getThreshold(freq);
+
+    // Map threshold (0-120 dB HL) to x offset from left edge
+    const x = X0 + (threshold / 120) * deltaX0 * 0.25;
 
     if (first) {
-      octx.moveTo(X0, y);
+      octx.moveTo(x, y);
       first = false;
     } else {
-      octx.lineTo(X0, y);
+      octx.lineTo(x, y);
     }
+
+    // Draw marker dot at each audiometric frequency
+    octx.fillStyle = "rgba(255, 255, 0, 0.9)";
+    octx.beginPath();
+    octx.arc(x, y, 3, 0, Math.PI * 2);
+    octx.fill();
   }
   octx.stroke();
   octx.setLineDash([]);
+  octx.restore();
+
+  // Draw threshold dB labels outside clip region
+  octx.save();
+  const fontSize = ((canvas.width * 9 / 1000) | 0);
+  octx.font = fontSize + "px sans-serif";
+  octx.textAlign = "left";
+  octx.textBaseline = "middle";
+
+  for (let fi = 0; fi < AUDIO_FREQS.length; fi++) {
+    const freq = AUDIO_FREQS[fi];
+    if (freq < fMin || freq > fMax) continue;
+
+    const y = freqToY(freq, Y0, deltaY0);
+    const threshold = audiogram.ear === "both"
+      ? audiogram.getWorstThreshold(freq)
+      : audiogram.getThreshold(freq);
+
+    octx.fillStyle = "rgba(255, 255, 0, 0.9)";
+    octx.fillText(threshold + " dB", X0 + deltaX0 + 4, y);
+  }
   octx.restore();
 }
 
