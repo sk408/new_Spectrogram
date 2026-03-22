@@ -1,5 +1,6 @@
 // ============================================================
-// Live Spectrogram — Real-time Audio Visualization
+// Live Spectrogram — Clinical Hearing Counseling Tool
+// Real-time Audio Visualization with Audiogram Overlay
 // ============================================================
 "use strict";
 
@@ -14,6 +15,8 @@ const BH7_COEFFS = Object.freeze([
 // --- Canvas ---
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
+const overlay = document.getElementById("canvas-overlay");
+const octx = overlay.getContext("2d");
 
 // --- Cached DOM Elements ---
 const dom = {
@@ -34,11 +37,18 @@ const dom = {
   settingsToggle:    document.getElementById("settings-toggle"),
   settingsClose:     document.getElementById("settings-close"),
   fullscreenBtn:     document.getElementById("fullscreen-btn"),
+  presentationBtn:   document.getElementById("presentation-btn"),
   screenshotBtn:     document.getElementById("screenshot-btn"),
   infoBtn:           document.getElementById("info-btn"),
   infoModal:         document.getElementById("info-modal"),
   infoText:          document.getElementById("info-text"),
   status:            document.getElementById("status"),
+  // Audiogram controls
+  audiogramEnable:   document.getElementById("audiogram-enable"),
+  audiogramPreset:   document.getElementById("audiogram-preset"),
+  audiogramEar:      document.getElementById("audiogram-ear"),
+  audiogramGrid:     document.getElementById("audiogram-grid"),
+  showPhonemes:      document.getElementById("show-phonemes"),
 };
 
 // --- Layout ---
@@ -68,9 +78,12 @@ let sensibilityTemp = 60;
 let frecMax = 0;
 let frecMaxDisplay = "0";
 let lastFreqUpdateTime = 0;
-const FREQ_UPDATE_INTERVAL = 1250; // Update peak frequency display every 1.25s
+const FREQ_UPDATE_INTERVAL = 1250;
 let counter = 0;
 let message0 = "";
+let startTime = 0;
+let presentationMode = false;
+let overlayDirty = true; // Flag to redraw overlay
 
 // --- Pre-allocated Buffers ---
 let timeBuffer = null;
@@ -85,12 +98,40 @@ function melScale(f) {
   return MEL_CONST * Math.log(f / 700 + 1);
 }
 
+function inverseMelScale(mel) {
+  return 700 * (Math.exp(mel / MEL_CONST) - 1);
+}
+
 function getFont(size) {
   return ((canvas.width * size / 1000) | 0) + "px sans-serif";
 }
 
 function setStatus(msg) {
   if (dom.status) dom.status.textContent = msg || "";
+}
+
+// Convert frequency to Y position on the spectrogram
+function freqToY(freq, Y0, deltaY0) {
+  const isLinear = dom.scale.value === "Linear";
+  if (isLinear) {
+    return Y0 + deltaY0 - (deltaY0 * (freq - fMin)) / (fMax - fMin);
+  }
+  const melMin = melScale(fMin);
+  const melRange = melScale(fMax) - melMin;
+  const mel = melScale(freq);
+  return Y0 + deltaY0 - (deltaY0 * (mel - melMin)) / melRange;
+}
+
+// Convert Y position to frequency
+function yToFreq(y, Y0, deltaY0) {
+  const isLinear = dom.scale.value === "Linear";
+  const frac = 1 - (y - Y0) / deltaY0;
+  if (isLinear) {
+    return fMin + frac * (fMax - fMin);
+  }
+  const melMin = melScale(fMin);
+  const melRange = melScale(fMax) - melMin;
+  return inverseMelScale(melMin + frac * melRange);
 }
 
 // ============================================================
@@ -155,6 +196,7 @@ function saveSettings() {
       fft: dom.fft.value,
     }));
   } catch (_) { /* storage unavailable */ }
+  audiogram.save();
 }
 
 function loadSettings() {
@@ -188,12 +230,17 @@ function applyOrientation() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
+  // Sync overlay canvas dimensions
+  overlay.width = canvas.width;
+  overlay.height = canvas.height;
+
   borderLeft = canvas.width / 20;
   borderRight = canvas.width / 10;
   const scaleV = canvas.height / 760;
   borderBottom = 80 * scaleV;
   borderTop = 10 * scaleV;
   plotColormap();
+  overlayDirty = true;
 }
 
 // ============================================================
@@ -283,6 +330,7 @@ function startVisualization(stream) {
   source.connect(analyserNode);
 
   message0 = "Sampling rate: " + audioCtx.sampleRate + " Hz";
+  startTime = Date.now();
 
   renderFrame();
 }
@@ -343,7 +391,6 @@ function renderFrame() {
       if (absBuffer[i] > maxIntensity) maxIntensity = absBuffer[i];
     }
   } else {
-    // WebAudio FFT — windowing is handled internally by AnalyserNode
     for (let i = 1; i < half; i++) {
       absBuffer[i] = freqBuffer[i] + 125;
       if (absBuffer[i] > maxIntensity) maxIntensity = absBuffer[i];
@@ -370,6 +417,12 @@ function renderFrame() {
   yAxisMarks();
   plotFFT();
   plotSpectro();
+
+  // Draw overlay (audiogram annotations) when needed
+  if (overlayDirty) {
+    drawOverlay();
+    overlayDirty = false;
+  }
 
   animationId = requestAnimationFrame(renderFrame);
 }
@@ -549,7 +602,6 @@ function plotFFT() {
   const Y0 = canvas.height / 10 + borderTop;
   const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
 
-  // Cache scale values for the loop
   const isLinear = dom.scale.value === "Linear";
   const freqRange = fMax - fMin;
   const melMin = isLinear ? 0 : melScale(fMin);
@@ -565,13 +617,11 @@ function plotFFT() {
     return Y0 + deltaY0 - (deltaY0 * (mel - melMin)) / melRange;
   }
 
-  // Clear FFT area
   ctx.fillStyle = "#003B5C";
   ctx.fillRect(0, Y0, fftWidth, deltaY0);
 
   ctx.lineWidth = 1;
 
-  // Colored magnitude bars
   for (let i = iMin; i < iMax; i++) {
     const y = getY(i);
     const value = myXAbs[i] / sensibility;
@@ -584,7 +634,6 @@ function plotFFT() {
     ctx.stroke();
   }
 
-  // White envelope
   ctx.beginPath();
   ctx.strokeStyle = "white";
   for (let i = iMin; i < iMax; i++) {
@@ -598,13 +647,11 @@ function plotFFT() {
   }
   ctx.stroke();
 
-  // Auto-adjust sensibility threshold
   sensibilityTemp = maxIntensity > sensibility ? maxIntensity : sensibility;
   colormapMarks();
   dom.outputSensibility.textContent = Math.floor(sensibilityTemp);
   dom.sensibility.value = Math.floor(sensibilityTemp);
 
-  // Threshold vertical line
   ctx.beginPath();
   ctx.strokeStyle = "white";
   const threshX = -sensibilityTemp * scaleH + fftWidth;
@@ -622,6 +669,7 @@ function plotSpectro() {
   const isScrolling = dom.scrolling.checked;
   const isPaused = dom.stop.checked;
   const isLinear = dom.scale.value === "Linear";
+  const audiogramEnabled = audiogram.enabled && dom.audiogramEnable.checked;
 
   const deltaI = iMax - iMin;
   const deltaF = fMax - fMin;
@@ -643,8 +691,10 @@ function plotSpectro() {
     }
   }
 
-  // Draw new frequency column
-  ctx.lineWidth = 1;
+  // Draw new frequency column using ImageData for better performance
+  const colX = isScrolling ? X0 + deltaX0 - binWidth : X0;
+  const imgData = ctx.createImageData(binWidth, Math.ceil(deltaY0));
+  const pixels = imgData.data;
 
   for (let i = iMin; i < iMax; i++) {
     let y;
@@ -658,20 +708,37 @@ function plotSpectro() {
 
     let value = myXAbs[i] / sensibility;
     if (value > 1) value = 1;
+    if (value < 0) value = 0;
 
     const rgb = evaluate_cmap(value, colormap, false);
-    ctx.strokeStyle = "rgb(" + rgb + ")";
+    let r = rgb[0], g = rgb[1], b = rgb[2];
 
-    ctx.beginPath();
-    if (isScrolling) {
-      ctx.moveTo(X0 + deltaX0, y);
-      ctx.lineTo(X0 + deltaX0 - binWidth, y);
-    } else {
-      ctx.moveTo(X0, y);
-      ctx.lineTo(X0 + binWidth, y);
+    // Audiogram masking: dim pixels below patient's hearing threshold
+    if (audiogramEnabled && value > 0.01) {
+      const freq = fMin + (deltaF * (i - iMin)) / deltaI;
+      const dBSPL = myXAbs[i];
+      if (!audiogram.isAudible(dBSPL, freq)) {
+        // Show inaudible sounds as dim red tint
+        r = Math.floor(r * 0.2 + 80);
+        g = Math.floor(g * 0.1);
+        b = Math.floor(b * 0.1);
+      }
     }
-    ctx.stroke();
+
+    // Map y to ImageData row and fill binWidth columns
+    const row = Math.floor(y - Y0);
+    if (row >= 0 && row < imgData.height) {
+      for (let bx = 0; bx < binWidth; bx++) {
+        const idx = (row * binWidth + bx) * 4;
+        pixels[idx] = r;
+        pixels[idx + 1] = g;
+        pixels[idx + 2] = b;
+        pixels[idx + 3] = 255;
+      }
+    }
   }
+
+  ctx.putImageData(imgData, colX, Y0);
 }
 
 function yAxisMarks() {
@@ -679,7 +746,6 @@ function yAxisMarks() {
   const Y0 = canvas.height / 10 + borderTop;
   const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
 
-  // Clear axis label area
   ctx.fillStyle = "white";
   ctx.fillRect(
     (0.9 * canvas.width) / 10,
@@ -747,7 +813,6 @@ function colormapMarks() {
   const Y0 = canvas.height / 10 + borderTop;
   const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
 
-  // Clear label areas
   ctx.fillStyle = "white";
   ctx.fillRect(x0, 0, canvas.width - x0, Y0 + deltaY0 + 10);
   ctx.fillRect(0, canvas.height - 0.8 * borderBottom, canvas.width, 0.8 * borderBottom + 10);
@@ -764,9 +829,349 @@ function colormapMarks() {
   ctx.fillText(Math.floor(0.25 * dB) + " dB", x0, Y0 + 0.75 * deltaY0);
   ctx.fillText("0 dB", x0, Y0 + deltaY0);
 
-  ctx.fillText("Time", canvas.width / 2, canvas.height - 0.5 * borderBottom);
+  // Elapsed time instead of static "Time"
+  const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const timeStr = mins + ":" + (secs < 10 ? "0" : "") + secs;
+  ctx.fillText(timeStr, canvas.width / 2, canvas.height - 0.5 * borderBottom);
+
   ctx.fillText("Loudness (dB)", 10, canvas.height - 0.5 * borderBottom);
   ctx.fillText("Color", canvas.width - borderRight, canvas.height - 0.5 * borderBottom);
+}
+
+// ============================================================
+// Overlay Canvas — Audiogram Annotations
+// ============================================================
+
+function drawOverlay() {
+  octx.clearRect(0, 0, overlay.width, overlay.height);
+
+  if (!audiogram.enabled || !dom.audiogramEnable.checked) return;
+
+  const Y0 = canvas.height / 10 + borderTop;
+  const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
+  const X0 = Math.floor(canvas.width / 10 + borderLeft);
+  const deltaX0 = Math.floor(0.9 * canvas.width - borderLeft - borderRight);
+
+  // Draw hearing threshold line across the spectrogram
+  drawThresholdLine(X0, Y0, deltaX0, deltaY0);
+
+  // Draw severity band indicator on the right
+  drawSeverityBar(Y0, deltaY0);
+
+  // Draw phoneme markers (speech banana)
+  if (dom.showPhonemes.checked) {
+    drawPhonemeMarkers(X0, Y0, deltaX0, deltaY0);
+  }
+
+  // Legend
+  drawOverlayLegend(Y0, deltaY0);
+}
+
+function drawThresholdLine(X0, Y0, deltaX0, deltaY0) {
+  octx.save();
+  octx.beginPath();
+  octx.rect(X0, Y0, deltaX0, deltaY0);
+  octx.clip();
+
+  // Sample threshold at many frequencies and draw the line
+  octx.beginPath();
+  octx.strokeStyle = "rgba(255, 255, 0, 0.8)";
+  octx.lineWidth = 2;
+  octx.setLineDash([6, 4]);
+
+  let first = true;
+  for (let f = Math.max(fMin, 100); f <= fMax; f += 20) {
+    const threshold = audiogram.ear === "both"
+      ? audiogram.getWorstThreshold(f)
+      : audiogram.getThreshold(f);
+
+    // Map threshold dB HL to Y position
+    // threshold dB HL roughly maps to: the fraction of sensibility where sound becomes inaudible
+    // Higher threshold = more hearing loss = lower on the spectrogram
+    const threshFraction = (threshold + 20) / sensibility; // +20 for SPL-to-HL offset
+    const y = Y0 + deltaY0 - deltaY0 * (1 - threshFraction);
+
+    const x = freqToY(f, Y0, deltaY0); // Get x position based on freq... actually we need freq->Y
+    const yPos = freqToY(f, Y0, deltaY0);
+
+    // We want to plot threshold vs frequency, but the spectrogram X axis is time
+    // Instead, draw the threshold line on the Y axis (frequency) with the dB mapped
+    // Actually: we draw a horizontal band showing WHERE sounds become inaudible
+    // The threshold line shows: at each frequency, what's the minimum dB needed
+    // Map to spectrogram coordinates
+    if (first) {
+      octx.moveTo(X0, yPos);
+      first = true; // will set after we actually compute right
+    }
+  }
+
+  // Better approach: draw threshold markers on the Y-axis area
+  // For each audiometric frequency, draw a marker showing the threshold level
+  octx.restore();
+
+  // Draw threshold indicators on the frequency axis
+  octx.save();
+  for (let fi = 0; fi < AUDIO_FREQS.length; fi++) {
+    const freq = AUDIO_FREQS[fi];
+    if (freq < fMin || freq > fMax) continue;
+
+    const y = freqToY(freq, Y0, deltaY0);
+    const threshold = audiogram.ear === "both"
+      ? audiogram.getWorstThreshold(freq)
+      : audiogram.getThreshold(freq);
+    const severity = audiogram.getSeverity(threshold);
+
+    // Draw a colored marker at this frequency
+    octx.fillStyle = severity.color.replace("0.35", "0.9");
+    octx.fillRect(X0 - 3, y - 2, deltaX0 + 6, 1);
+
+    // Draw threshold dB label
+    octx.fillStyle = "rgba(255, 255, 0, 0.9)";
+    octx.font = ((canvas.width * 9 / 1000) | 0) + "px sans-serif";
+    octx.textAlign = "left";
+    octx.textBaseline = "middle";
+    octx.fillText(threshold + " dB HL", X0 + deltaX0 + 4, y);
+  }
+  octx.restore();
+
+  // Draw the audiogram curve as a connected line on the spectrogram
+  octx.save();
+  octx.beginPath();
+  octx.rect(X0, Y0, deltaX0, deltaY0);
+  octx.clip();
+
+  octx.beginPath();
+  octx.strokeStyle = "rgba(255, 255, 0, 0.7)";
+  octx.lineWidth = 2;
+  octx.setLineDash([8, 4]);
+
+  first = true;
+  for (let fi = 0; fi < AUDIO_FREQS.length; fi++) {
+    const freq = AUDIO_FREQS[fi];
+    if (freq < fMin || freq > fMax) continue;
+
+    const y = freqToY(freq, Y0, deltaY0);
+
+    if (first) {
+      octx.moveTo(X0, y);
+      first = false;
+    } else {
+      octx.lineTo(X0, y);
+    }
+  }
+  octx.stroke();
+  octx.setLineDash([]);
+  octx.restore();
+}
+
+function drawSeverityBar(Y0, deltaY0) {
+  const barX = overlay.width - 8;
+  const barW = 6;
+
+  // Draw severity color bands mapped to the frequency range
+  for (let fi = 0; fi < AUDIO_FREQS.length; fi++) {
+    const freq = AUDIO_FREQS[fi];
+    if (freq < fMin || freq > fMax) continue;
+
+    const y = freqToY(freq, Y0, deltaY0);
+    const threshold = audiogram.ear === "both"
+      ? audiogram.getWorstThreshold(freq)
+      : audiogram.getThreshold(freq);
+    const severity = audiogram.getSeverity(threshold);
+
+    // Draw a small colored indicator
+    octx.fillStyle = severity.color.replace("0.35", "0.8");
+    octx.fillRect(barX, y - 4, barW, 8);
+    octx.strokeStyle = "rgba(255,255,255,0.3)";
+    octx.strokeRect(barX, y - 4, barW, 8);
+  }
+}
+
+function drawPhonemeMarkers(X0, Y0, deltaX0, deltaY0) {
+  octx.save();
+  octx.beginPath();
+  octx.rect(X0, Y0, deltaX0, deltaY0);
+  octx.clip();
+
+  const fontSize = Math.max(9, (canvas.width * 10 / 1000) | 0);
+  octx.font = "bold " + fontSize + "px sans-serif";
+  octx.textAlign = "center";
+  octx.textBaseline = "middle";
+
+  // Draw speech banana boundary first
+  drawSpeechBanana(X0, Y0, deltaX0, deltaY0);
+
+  // Draw individual phoneme labels
+  for (const p of PHONEME_DATA) {
+    if (p.freq < fMin || p.freq > fMax) continue;
+
+    const y = freqToY(p.freq, Y0, deltaY0);
+    // Place phonemes at varying x positions within the spectrogram
+    const xOffset = (hashStr(p.phoneme) % 60) / 100;
+    const x = X0 + deltaX0 * (0.2 + xOffset * 0.6);
+
+    const audible = audiogram.isPhonemeAudible(p);
+
+    if (audible) {
+      // Audible: bright white with green halo
+      octx.fillStyle = "rgba(76, 175, 80, 0.25)";
+      octx.beginPath();
+      octx.arc(x, y, fontSize + 2, 0, Math.PI * 2);
+      octx.fill();
+      octx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    } else {
+      // Inaudible: red with strikethrough appearance
+      octx.fillStyle = "rgba(244, 67, 54, 0.3)";
+      octx.beginPath();
+      octx.arc(x, y, fontSize + 2, 0, Math.PI * 2);
+      octx.fill();
+      octx.fillStyle = "rgba(244, 67, 54, 0.9)";
+    }
+
+    octx.fillText(p.phoneme, x, y);
+
+    if (!audible) {
+      // Strikethrough for inaudible
+      octx.strokeStyle = "rgba(244, 67, 54, 0.7)";
+      octx.lineWidth = 1.5;
+      octx.beginPath();
+      const tw = octx.measureText(p.phoneme).width;
+      octx.moveTo(x - tw / 2 - 2, y);
+      octx.lineTo(x + tw / 2 + 2, y);
+      octx.stroke();
+    }
+  }
+
+  octx.restore();
+}
+
+function drawSpeechBanana(X0, Y0, deltaX0, deltaY0) {
+  // Draw the outline of the speech banana region
+  // The speech banana spans roughly 250-6000 Hz, 10-55 dB HL
+  const bananaFreqs = [250, 500, 1000, 2000, 4000, 6000];
+  const bananaTop = [10, 10, 10, 10, 15, 20];    // upper dB boundary
+  const bananaBottom = [45, 45, 40, 35, 35, 30];  // lower dB boundary
+
+  octx.beginPath();
+  octx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+  octx.fillStyle = "rgba(255, 255, 255, 0.03)";
+  octx.lineWidth = 1;
+  octx.setLineDash([4, 4]);
+
+  // Build path around the banana shape
+  const points = [];
+  for (let i = 0; i < bananaFreqs.length; i++) {
+    if (bananaFreqs[i] < fMin || bananaFreqs[i] > fMax) continue;
+    points.push({ x: X0 + deltaX0 * 0.15, y: freqToY(bananaFreqs[i], Y0, deltaY0) });
+  }
+  for (let i = bananaFreqs.length - 1; i >= 0; i--) {
+    if (bananaFreqs[i] < fMin || bananaFreqs[i] > fMax) continue;
+    points.push({ x: X0 + deltaX0 * 0.85, y: freqToY(bananaFreqs[i], Y0, deltaY0) });
+  }
+
+  if (points.length > 2) {
+    octx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      octx.lineTo(points[i].x, points[i].y);
+    }
+    octx.closePath();
+    octx.fill();
+    octx.stroke();
+  }
+
+  octx.setLineDash([]);
+}
+
+function drawOverlayLegend(Y0, deltaY0) {
+  const lx = 10;
+  const ly = Y0 + deltaY0 + 4;
+  const fontSize = Math.max(9, (canvas.width * 8 / 1000) | 0);
+  octx.font = fontSize + "px sans-serif";
+  octx.textAlign = "left";
+  octx.textBaseline = "top";
+
+  const presetLabel = AUDIOGRAM_PRESETS[audiogram.presetName]?.label || "Custom";
+  const earLabel = audiogram.ear === "both" ? "Both ears" : audiogram.ear === "left" ? "Left ear" : "Right ear";
+
+  octx.fillStyle = "rgba(255, 255, 0, 0.8)";
+  octx.fillText("Audiogram: " + presetLabel + " (" + earLabel + ")", lx, ly);
+
+  // Severity legend
+  let sx = lx + 300;
+  for (const key of Object.keys(SEVERITY)) {
+    const s = SEVERITY[key];
+    octx.fillStyle = s.color.replace("0.35", "0.8");
+    octx.fillRect(sx, ly + 1, 8, 8);
+    octx.fillStyle = "rgba(200, 200, 200, 0.7)";
+    octx.fillText(s.label, sx + 11, ly);
+    sx += octx.measureText(s.label).width + 20;
+    if (sx > canvas.width - 100) break;
+  }
+}
+
+// Simple string hash for deterministic phoneme placement
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+// ============================================================
+// Audiogram UI Sync
+// ============================================================
+
+function syncAudiogramFromUI() {
+  const leftInputs = dom.audiogramGrid.querySelectorAll('.grid-row[data-ear="left"] input');
+  const rightInputs = dom.audiogramGrid.querySelectorAll('.grid-row[data-ear="right"] input');
+
+  leftInputs.forEach((input, i) => {
+    audiogram.thresholds.left[i] = parseInt(input.value) || 0;
+  });
+  rightInputs.forEach((input, i) => {
+    audiogram.thresholds.right[i] = parseInt(input.value) || 0;
+  });
+
+  audiogram.ear = dom.audiogramEar.value;
+  audiogram.enabled = dom.audiogramEnable.checked;
+  overlayDirty = true;
+  audiogram.save();
+}
+
+function syncUIFromAudiogram() {
+  dom.audiogramEnable.checked = audiogram.enabled;
+  dom.audiogramPreset.value = audiogram.presetName;
+  dom.audiogramEar.value = audiogram.ear;
+
+  const leftInputs = dom.audiogramGrid.querySelectorAll('.grid-row[data-ear="left"] input');
+  const rightInputs = dom.audiogramGrid.querySelectorAll('.grid-row[data-ear="right"] input');
+
+  leftInputs.forEach((input, i) => {
+    input.value = audiogram.thresholds.left[i];
+  });
+  rightInputs.forEach((input, i) => {
+    input.value = audiogram.thresholds.right[i];
+  });
+}
+
+// ============================================================
+// Presentation Mode
+// ============================================================
+
+function togglePresentation() {
+  presentationMode = !presentationMode;
+  document.body.classList.toggle("presentation-mode", presentationMode);
+  dom.presentationBtn.classList.toggle("active", presentationMode);
+
+  if (presentationMode) {
+    // Close settings panel if open
+    if (!dom.settingsPanel.classList.contains("hidden")) {
+      dom.settingsPanel.classList.add("hidden");
+    }
+  }
 }
 
 // ============================================================
@@ -778,6 +1183,7 @@ function toggleSettings() {
 }
 
 function showInfo() {
+  const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
   dom.infoText.textContent = [
     message0,
     "Screen: " + screen.width + "x" + screen.height,
@@ -785,7 +1191,12 @@ function showInfo() {
     "Canvas: " + canvas.width + "x" + canvas.height,
     "FFT size: " + fftSize,
     "Bins: " + bufferLength,
-  ].join("\n");
+    "Elapsed: " + Math.floor(elapsed / 60) + "m " + (elapsed % 60) + "s",
+    "Audiogram: " + (audiogram.enabled ? "ON" : "OFF"),
+    audiogram.enabled
+      ? "  Preset: " + (AUDIOGRAM_PRESETS[audiogram.presetName]?.label || "Custom")
+      : "",
+  ].filter(Boolean).join("\n");
   dom.infoModal.classList.remove("hidden");
 }
 
@@ -794,7 +1205,15 @@ function hideInfo() {
 }
 
 function takeScreenshot() {
-  canvas.toBlob(function (blob) {
+  // Composite both canvases for screenshot
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const tctx = tempCanvas.getContext("2d");
+  tctx.drawImage(canvas, 0, 0);
+  tctx.drawImage(overlay, 0, 0);
+
+  tempCanvas.toBlob(function (blob) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -828,6 +1247,7 @@ dom.settingsClose.addEventListener("click", toggleSettings);
 
 // Action buttons
 dom.fullscreenBtn.addEventListener("click", toggleFullscreen);
+dom.presentationBtn.addEventListener("click", togglePresentation);
 dom.screenshotBtn.addEventListener("click", takeScreenshot);
 dom.infoBtn.addEventListener("click", showInfo);
 dom.infoModal.querySelector(".modal-close").addEventListener("click", hideInfo);
@@ -844,7 +1264,15 @@ dom.microphone.addEventListener("change", function () {
 });
 
 // Colormap change -> redraw colormap bar
-dom.colormap.addEventListener("change", plotColormap);
+dom.colormap.addEventListener("change", function () {
+  plotColormap();
+  overlayDirty = true;
+});
+
+// Scale change -> redraw overlay
+dom.scale.addEventListener("change", function () {
+  overlayDirty = true;
+});
 
 // Sensibility slider -> update display
 dom.sensibility.addEventListener("input", function () {
@@ -854,6 +1282,36 @@ dom.sensibility.addEventListener("input", function () {
 // Persist settings on any control change
 dom.settingsPanel.addEventListener("change", saveSettings);
 dom.settingsPanel.addEventListener("input", saveSettings);
+
+// --- Audiogram Controls ---
+dom.audiogramEnable.addEventListener("change", function () {
+  audiogram.enabled = this.checked;
+  overlayDirty = true;
+  audiogram.save();
+});
+
+dom.audiogramPreset.addEventListener("change", function () {
+  audiogram.loadPreset(this.value);
+  syncUIFromAudiogram();
+  overlayDirty = true;
+  audiogram.save();
+});
+
+dom.audiogramEar.addEventListener("change", function () {
+  audiogram.ear = this.value;
+  overlayDirty = true;
+  audiogram.save();
+});
+
+dom.audiogramGrid.addEventListener("input", syncAudiogramFromUI);
+
+dom.showPhonemes.addEventListener("change", function () {
+  overlayDirty = true;
+});
+
+// Freq range changes -> redraw overlay
+dom.fMin.addEventListener("change", function () { overlayDirty = true; });
+dom.fMax.addEventListener("change", function () { overlayDirty = true; });
 
 // Canvas interactions — pause toggle
 canvas.addEventListener("mousedown", function (e) {
@@ -894,15 +1352,25 @@ document.addEventListener("keydown", function (e) {
     case "f":
       toggleFullscreen();
       break;
+    case "p":
+      togglePresentation();
+      break;
     case "Escape":
-      if (!dom.settingsPanel.classList.contains("hidden")) toggleSettings();
+      if (presentationMode) {
+        togglePresentation();
+      } else if (!dom.settingsPanel.classList.contains("hidden")) {
+        toggleSettings();
+      }
       if (!dom.infoModal.classList.contains("hidden")) hideInfo();
       break;
   }
 });
 
 // Resize
-window.addEventListener("resize", applyOrientation);
+window.addEventListener("resize", function () {
+  applyOrientation();
+  overlayDirty = true;
+});
 
 // ============================================================
 // Initialize
@@ -910,5 +1378,7 @@ window.addEventListener("resize", applyOrientation);
 
 populateColormaps();
 loadSettings();
+audiogram.load();
+syncUIFromAudiogram();
 applyOrientation();
 initMicrophones();

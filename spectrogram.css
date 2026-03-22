@@ -1,5 +1,5 @@
 /* ============================================================
-   Live Spectrogram — Styles
+   Live Spectrogram — Clinical Hearing Tool Styles
    ============================================================ */
 
 * {
@@ -16,13 +16,27 @@ body {
     overflow: hidden;
 }
 
-/* --- Canvas --- */
+/* --- Canvas Container & Overlay --- */
+
+#canvas-container {
+    position: relative;
+    width: 100vw;
+    border-bottom: 2px solid #333;
+}
 
 #canvas {
     display: block;
-    width: 100vw;
+    width: 100%;
     background: black;
-    border-bottom: 2px solid #333;
+}
+
+#canvas-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 }
 
 /* --- Status Bar --- */
@@ -52,7 +66,8 @@ body {
 /* --- Floating Buttons --- */
 
 #settings-toggle,
-#fullscreen-btn {
+#fullscreen-btn,
+#presentation-btn {
     position: fixed;
     z-index: 50;
     background: rgba(0, 0, 0, 0.5);
@@ -82,11 +97,24 @@ body {
     font-size: 16px;
 }
 
+#presentation-btn {
+    bottom: 16px;
+    right: 112px;
+    font-size: 16px;
+}
+
 #settings-toggle:hover,
-#fullscreen-btn:hover {
+#fullscreen-btn:hover,
+#presentation-btn:hover {
     background: rgba(0, 0, 0, 0.8);
     color: #fff;
     border-color: rgba(255, 255, 255, 0.3);
+}
+
+#presentation-btn.active {
+    background: rgba(76, 175, 80, 0.6);
+    color: #fff;
+    border-color: rgba(76, 175, 80, 0.5);
 }
 
 /* --- Settings Panel --- */
@@ -95,7 +123,7 @@ body {
     position: fixed;
     top: 0;
     right: 0;
-    width: 300px;
+    width: 320px;
     height: 100vh;
     background: #16213e;
     border-left: 2px solid #0f3460;
@@ -229,6 +257,74 @@ legend {
     min-width: fit-content;
 }
 
+/* --- Audiogram Threshold Grid --- */
+
+#audiogram-grid {
+    margin-top: 6px;
+    font-size: 11px;
+}
+
+.grid-header {
+    display: grid;
+    grid-template-columns: 24px repeat(6, 1fr);
+    gap: 3px;
+    margin-bottom: 3px;
+}
+
+.grid-header span {
+    text-align: center;
+    color: #888;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.grid-row {
+    display: grid;
+    grid-template-columns: 24px repeat(6, 1fr);
+    gap: 3px;
+    margin-bottom: 3px;
+}
+
+.grid-row .ear-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.grid-row[data-ear="left"] .ear-label {
+    color: #42a5f5;
+}
+
+.grid-row[data-ear="right"] .ear-label {
+    color: #ef5350;
+}
+
+.grid-row input[type="number"] {
+    width: 100%;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 3px 2px;
+    font-size: 11px;
+    font-family: inherit;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+
+.grid-row input[type="number"]::-webkit-inner-spin-button,
+.grid-row input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.grid-row input[type="number"]:focus {
+    outline: none;
+    border-color: #53a8b6;
+}
+
 /* --- Panel Actions --- */
 
 .panel-actions {
@@ -354,6 +450,29 @@ legend {
     background: #555;
 }
 
+/* --- Presentation Mode --- */
+
+body.presentation-mode #settings-toggle,
+body.presentation-mode #fullscreen-btn,
+body.presentation-mode #settings-panel,
+body.presentation-mode #status {
+    display: none !important;
+    transform: none !important;
+}
+
+body.presentation-mode #presentation-btn {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+body.presentation-mode #presentation-btn:hover {
+    opacity: 1;
+}
+
+body.presentation-mode #canvas-container {
+    border-bottom: none;
+}
+
 /* --- Responsive --- */
 
 @media (max-width: 600px) {
@@ -376,9 +495,21 @@ legend {
         height: 36px;
     }
 
+    #presentation-btn {
+        bottom: 12px;
+        right: 100px;
+        width: 36px;
+        height: 36px;
+    }
+
     .control-row select,
     .control-row input[type="number"],
     .range-group {
         max-width: 130px;
+    }
+
+    .grid-row input[type="number"] {
+        padding: 2px 1px;
+        font-size: 10px;
     }
 }

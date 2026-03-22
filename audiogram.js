@@ -1,0 +1,185 @@
+// ============================================================
+// Audiogram Data Model — Hearing Threshold & Speech Mapping
+// ============================================================
+"use strict";
+
+// Standard audiometric frequencies (Hz)
+const AUDIO_FREQS = [250, 500, 1000, 2000, 4000, 8000];
+
+// Hearing loss severity bands (dB HL)
+const SEVERITY = Object.freeze({
+  NORMAL:       { min: -10, max: 25,  label: "Normal",            color: "rgba(76,175,80,0.35)"  },
+  MILD:         { min: 26,  max: 40,  label: "Mild",              color: "rgba(255,235,59,0.35)" },
+  MODERATE:     { min: 41,  max: 55,  label: "Moderate",          color: "rgba(255,152,0,0.35)"  },
+  MOD_SEVERE:   { min: 56,  max: 70,  label: "Moderately Severe", color: "rgba(255,87,34,0.35)"  },
+  SEVERE:       { min: 71,  max: 90,  label: "Severe",            color: "rgba(244,67,54,0.35)"  },
+  PROFOUND:     { min: 91,  max: 120, label: "Profound",          color: "rgba(136,14,79,0.35)"  },
+});
+
+// Preset audiogram patterns (dB HL at each standard frequency)
+const AUDIOGRAM_PRESETS = {
+  normal:           { label: "Normal Hearing",           left: [10,10,10,10,15,15],      right: [10,10,10,10,15,15]      },
+  mild_high_freq:   { label: "Mild High-Freq Loss",     left: [10,15,20,35,40,45],      right: [10,15,20,35,40,45]      },
+  moderate_sloping: { label: "Moderate Sloping",         left: [15,20,30,45,55,65],      right: [15,20,30,45,55,65]      },
+  severe_high_freq: { label: "Severe High-Freq Loss",   left: [10,15,25,55,75,85],      right: [10,15,25,55,75,85]      },
+  presbycusis:      { label: "Presbycusis (Age-related)",left: [15,20,25,40,60,75],      right: [15,20,25,40,60,75]      },
+  cookie_bite:      { label: "Cookie Bite",              left: [15,40,55,50,35,20],      right: [15,40,55,50,35,20]      },
+  noise_induced:    { label: "Noise-Induced",            left: [10,10,15,25,65,50],      right: [10,10,15,25,65,50]      },
+  flat_moderate:    { label: "Flat Moderate",             left: [45,45,50,50,50,45],      right: [45,45,50,50,50,45]      },
+};
+
+// Speech phoneme positions for the "speech banana"
+// freq: center frequency in Hz, dB: typical intensity in dB HL
+const PHONEME_DATA = [
+  // Vowels — low-to-mid frequency, higher intensity
+  { phoneme: "oo", freq: 300,  dB: 40, type: "vowel" },
+  { phoneme: "u",  freq: 350,  dB: 35, type: "vowel" },
+  { phoneme: "o",  freq: 500,  dB: 40, type: "vowel" },
+  { phoneme: "ah", freq: 700,  dB: 35, type: "vowel" },
+  { phoneme: "a",  freq: 900,  dB: 30, type: "vowel" },
+  { phoneme: "e",  freq: 1500, dB: 25, type: "vowel" },
+  { phoneme: "i",  freq: 2000, dB: 25, type: "vowel" },
+  { phoneme: "ee", freq: 2500, dB: 30, type: "vowel" },
+
+  // Voiced consonants — mid frequency
+  { phoneme: "m",  freq: 300,  dB: 25, type: "voiced" },
+  { phoneme: "n",  freq: 1000, dB: 25, type: "voiced" },
+  { phoneme: "ng", freq: 800,  dB: 30, type: "voiced" },
+  { phoneme: "l",  freq: 1000, dB: 35, type: "voiced" },
+  { phoneme: "r",  freq: 1200, dB: 30, type: "voiced" },
+  { phoneme: "j",  freq: 2000, dB: 20, type: "voiced" },
+  { phoneme: "z",  freq: 3000, dB: 25, type: "voiced" },
+  { phoneme: "v",  freq: 1500, dB: 30, type: "voiced" },
+  { phoneme: "b",  freq: 400,  dB: 20, type: "voiced" },
+  { phoneme: "d",  freq: 1500, dB: 15, type: "voiced" },
+  { phoneme: "g",  freq: 1500, dB: 20, type: "voiced" },
+
+  // Unvoiced consonants — high frequency, lower intensity
+  { phoneme: "p",  freq: 2000, dB: 10, type: "unvoiced" },
+  { phoneme: "t",  freq: 3500, dB: 10, type: "unvoiced" },
+  { phoneme: "k",  freq: 2500, dB: 15, type: "unvoiced" },
+  { phoneme: "f",  freq: 4000, dB: 20, type: "unvoiced" },
+  { phoneme: "th", freq: 5000, dB: 15, type: "unvoiced" },
+  { phoneme: "s",  freq: 5000, dB: 20, type: "unvoiced" },
+  { phoneme: "sh", freq: 3500, dB: 25, type: "unvoiced" },
+  { phoneme: "h",  freq: 1500, dB: 15, type: "unvoiced" },
+  { phoneme: "ch", freq: 4000, dB: 15, type: "unvoiced" },
+];
+
+// Frequency band descriptions for patient counseling
+const FREQ_BAND_LABELS = {
+  250:  "low vowels (m, n, oo)",
+  500:  "vowels (o, ah)",
+  1000: "vowels & voiced consonants",
+  2000: "consonants (s, sh, p, t)",
+  4000: "high consonants (f, th, s)",
+  8000: "sibilants, detail",
+};
+
+// Audiogram state
+const audiogram = {
+  enabled: false,
+  ear: "both",   // "left", "right", "both"
+  presetName: "normal",
+  thresholds: {
+    left:  [10, 10, 10, 10, 15, 15],
+    right: [10, 10, 10, 10, 15, 15],
+  },
+
+  // Get interpolated threshold at any frequency
+  getThreshold(freq) {
+    const ear = this.ear === "right" ? "right" : "left";
+    const ths = this.thresholds[ear];
+
+    if (freq <= AUDIO_FREQS[0]) return ths[0];
+    if (freq >= AUDIO_FREQS[AUDIO_FREQS.length - 1]) return ths[ths.length - 1];
+
+    for (let i = 0; i < AUDIO_FREQS.length - 1; i++) {
+      if (freq >= AUDIO_FREQS[i] && freq <= AUDIO_FREQS[i + 1]) {
+        const t = (freq - AUDIO_FREQS[i]) / (AUDIO_FREQS[i + 1] - AUDIO_FREQS[i]);
+        return ths[i] + t * (ths[i + 1] - ths[i]);
+      }
+    }
+    return ths[ths.length - 1];
+  },
+
+  // Get worst (higher) threshold when "both" ears selected
+  getWorstThreshold(freq) {
+    if (this.ear !== "both") return this.getThreshold(freq);
+    const savedEar = this.ear;
+    this.ear = "left";
+    const l = this.getThreshold(freq);
+    this.ear = "right";
+    const r = this.getThreshold(freq);
+    this.ear = savedEar;
+    return Math.max(l, r);
+  },
+
+  // Convert threshold to a 0-1 fraction of spectrogram dB range
+  // dBSPL is the sound level of a spectrogram pixel
+  // Returns true if the sound is ABOVE the patient's threshold (audible)
+  isAudible(dBSPL, freq) {
+    // Map spectrogram dB to approximate dB HL
+    // Spectrogram dB are relative; hearing thresholds are in dB HL
+    // Using a simple mapping: ~20 dB SPL ≈ 0 dB HL for speech frequencies
+    const dBHL = dBSPL - 20;
+    const threshold = this.ear === "both"
+      ? this.getWorstThreshold(freq)
+      : this.getThreshold(freq);
+    return dBHL >= threshold;
+  },
+
+  // Check if a specific phoneme is audible
+  isPhonemeAudible(phoneme) {
+    const threshold = this.ear === "both"
+      ? this.getWorstThreshold(phoneme.freq)
+      : this.getThreshold(phoneme.freq);
+    return phoneme.dB >= threshold;
+  },
+
+  // Get severity label for a threshold value
+  getSeverity(dBHL) {
+    for (const key of Object.keys(SEVERITY)) {
+      const s = SEVERITY[key];
+      if (dBHL >= s.min && dBHL <= s.max) return s;
+    }
+    return SEVERITY.PROFOUND;
+  },
+
+  // Load a preset
+  loadPreset(name) {
+    const preset = AUDIOGRAM_PRESETS[name];
+    if (!preset) return;
+    this.presetName = name;
+    this.thresholds.left = preset.left.slice();
+    this.thresholds.right = preset.right.slice();
+  },
+
+  // Save to localStorage
+  save() {
+    try {
+      localStorage.setItem("audiogram_data", JSON.stringify({
+        enabled: this.enabled,
+        ear: this.ear,
+        presetName: this.presetName,
+        thresholds: this.thresholds,
+      }));
+    } catch (_) {}
+  },
+
+  // Load from localStorage
+  load() {
+    try {
+      const raw = localStorage.getItem("audiogram_data");
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.enabled !== undefined) this.enabled = d.enabled;
+      if (d.ear) this.ear = d.ear;
+      if (d.presetName) this.presetName = d.presetName;
+      if (d.thresholds) {
+        if (d.thresholds.left) this.thresholds.left = d.thresholds.left;
+        if (d.thresholds.right) this.thresholds.right = d.thresholds.right;
+      }
+    } catch (_) {}
+  },
+};

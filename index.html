@@ -5,15 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <title>Spectrogram</title>
+    <title>Spectrogram — Hearing Counseling Tool</title>
     <link rel="stylesheet" href="spectrogram.css">
 </head>
 
 <body>
-    <canvas id="canvas"></canvas>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+        <canvas id="canvas-overlay"></canvas>
+    </div>
 
     <div id="status"></div>
 
+    <button id="presentation-btn" title="Presentation Mode (P)">&#9654;</button>
     <button id="fullscreen-btn" title="Fullscreen (F)">&#x26F6;</button>
     <button id="settings-toggle" title="Settings (Esc)">&#9881;</button>
 
@@ -22,6 +26,64 @@
             <h2>Settings</h2>
             <button id="settings-close" title="Close">&times;</button>
         </div>
+
+        <fieldset>
+            <legend>Audiogram</legend>
+            <div class="control-row">
+                <label for="audiogram-enable">Enable Overlay</label>
+                <input type="checkbox" id="audiogram-enable">
+            </div>
+            <div class="control-row">
+                <label for="audiogram-preset">Preset</label>
+                <select id="audiogram-preset">
+                    <option value="normal">Normal Hearing</option>
+                    <option value="mild_high_freq">Mild High-Freq Loss</option>
+                    <option value="moderate_sloping">Moderate Sloping</option>
+                    <option value="severe_high_freq">Severe High-Freq Loss</option>
+                    <option value="presbycusis" selected>Presbycusis (Age)</option>
+                    <option value="cookie_bite">Cookie Bite</option>
+                    <option value="noise_induced">Noise-Induced</option>
+                    <option value="flat_moderate">Flat Moderate</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label for="audiogram-ear">Ear</label>
+                <select id="audiogram-ear">
+                    <option value="both" selected>Both (worst)</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                </select>
+            </div>
+            <div id="audiogram-grid">
+                <div class="grid-header">
+                    <span></span>
+                    <span>250</span><span>500</span><span>1k</span>
+                    <span>2k</span><span>4k</span><span>8k</span>
+                </div>
+                <div class="grid-row" data-ear="left">
+                    <span class="ear-label">L</span>
+                    <input type="number" min="-10" max="120" step="5" data-freq="0">
+                    <input type="number" min="-10" max="120" step="5" data-freq="1">
+                    <input type="number" min="-10" max="120" step="5" data-freq="2">
+                    <input type="number" min="-10" max="120" step="5" data-freq="3">
+                    <input type="number" min="-10" max="120" step="5" data-freq="4">
+                    <input type="number" min="-10" max="120" step="5" data-freq="5">
+                </div>
+                <div class="grid-row" data-ear="right">
+                    <span class="ear-label">R</span>
+                    <input type="number" min="-10" max="120" step="5" data-freq="0">
+                    <input type="number" min="-10" max="120" step="5" data-freq="1">
+                    <input type="number" min="-10" max="120" step="5" data-freq="2">
+                    <input type="number" min="-10" max="120" step="5" data-freq="3">
+                    <input type="number" min="-10" max="120" step="5" data-freq="4">
+                    <input type="number" min="-10" max="120" step="5" data-freq="5">
+                </div>
+            </div>
+            <div class="control-row">
+                <label for="show-phonemes">Speech Banana</label>
+                <input type="checkbox" id="show-phonemes" checked>
+            </div>
+        </fieldset>
 
         <fieldset>
             <legend>Appearance</legend>
@@ -119,7 +181,7 @@
         </div>
 
         <div class="shortcuts-hint">
-            Space: pause &middot; S: screenshot &middot; F: fullscreen &middot; Esc: close
+            Space: pause &middot; S: screenshot &middot; F: fullscreen &middot; P: present &middot; Esc: close
         </div>
     </div>
 
@@ -135,6 +197,7 @@
     </div>
 
     <script src="js-colormaps.js"></script>
+    <script src="audiogram.js"></script>
     <script src="spectrogram.js"></script>
 </body>
 
