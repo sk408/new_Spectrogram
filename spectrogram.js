@@ -66,6 +66,9 @@ let maxIntensity = -100;
 let sensibility = 60;
 let sensibilityTemp = 60;
 let frecMax = 0;
+let frecMaxDisplay = "0";
+let lastFreqUpdateTime = 0;
+const FREQ_UPDATE_INTERVAL = 1250; // Update peak frequency display every 1.25s
 let counter = 0;
 let message0 = "";
 
@@ -352,16 +355,15 @@ function renderFrame() {
   iMin = Math.floor((myXAbs.length * fMin) / fNyquist);
   iMax = Math.floor((myXAbs.length * fMax) / fNyquist);
 
-  // Peak frequency detection
-  let peakVal = -Infinity;
-  let peakIdx = 0;
-  for (let i = 1; i < myXAbs.length; i++) {
-    if (myXAbs[i] > peakVal) {
-      peakVal = myXAbs[i];
-      peakIdx = i;
-    }
+  // Fundamental frequency via Harmonic Product Spectrum
+  frecMax = calculateFundamentalFrequencyHPS(myXAbs, audioCtx.sampleRate);
+
+  // Throttle the frequency display update (every 1.25s)
+  const now = Date.now();
+  if (now - lastFreqUpdateTime > FREQ_UPDATE_INTERVAL) {
+    frecMaxDisplay = Math.round(frecMax).toString();
+    lastFreqUpdateTime = now;
   }
-  frecMax = (peakIdx / myXAbs.length) * fNyquist;
 
   // Render all visualization layers
   drawPeakFrequency();
@@ -450,6 +452,47 @@ function myFFT(signal) {
 }
 
 // ============================================================
+// Harmonic Product Spectrum — Fundamental Frequency Detection
+// ============================================================
+
+function downsample(array, factor) {
+  const len = Math.floor(array.length / factor);
+  const result = new Array(len);
+  for (let i = 0; i < len; i++) {
+    result[i] = array[i * factor];
+  }
+  return result;
+}
+
+function calculateFundamentalFrequencyHPS(spectrum, sampleRate) {
+  const mag = new Array(spectrum.length);
+  for (let i = 0; i < spectrum.length; i++) {
+    mag[i] = Math.abs(spectrum[i]);
+  }
+
+  const harmonics = 5;
+  const result = mag.slice();
+
+  for (let h = 2; h <= harmonics; h++) {
+    const ds = downsample(mag, h);
+    for (let i = 0; i < ds.length; i++) {
+      result[i] *= ds[i];
+    }
+  }
+
+  let maxVal = -Infinity;
+  let maxIdx = 0;
+  for (let i = 1; i < result.length; i++) {
+    if (result[i] > maxVal) {
+      maxVal = result[i];
+      maxIdx = i;
+    }
+  }
+
+  return maxIdx * sampleRate / spectrum.length;
+}
+
+// ============================================================
 // Drawing Functions
 // ============================================================
 
@@ -464,7 +507,7 @@ function drawPeakFrequency() {
   ctx.font = getFont(25);
   ctx.textAlign = "right";
   const centerY = (borderTop + canvas.height / 10) / 2;
-  ctx.fillText(Math.round(frecMax) + " Hz", canvas.width / 8, centerY);
+  ctx.fillText(frecMaxDisplay + " Hz", canvas.width / 8, centerY);
 }
 
 function plotMic() {
