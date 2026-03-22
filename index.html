@@ -1,107 +1,141 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport"
-        content="width=device-width, user-scalable=no,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <title>Spectrogram</title>
-    <link rel="stylesheet" href="./spectrogram.css">
+    <link rel="stylesheet" href="spectrogram.css">
 </head>
 
 <body>
-    <canvas class="canvas"></canvas>
-    
-    <div id="title" class="block_container">
-        <h1 onclick="toggleContent()">Spectrogram</h1>
-        <hr>
-    </div>
+    <canvas id="canvas"></canvas>
 
-    <div id="content" class="block_container" style="display: none;">
-        <fieldset class="fieldset">
+    <div id="status"></div>
+
+    <button id="fullscreen-btn" title="Fullscreen (F)">&#x26F6;</button>
+    <button id="settings-toggle" title="Settings (Esc)">&#9881;</button>
+
+    <div id="settings-panel" class="hidden">
+        <div class="panel-header">
+            <h2>Settings</h2>
+            <button id="settings-close" title="Close">&times;</button>
+        </div>
+
+        <fieldset>
             <legend>Appearance</legend>
-            <label for="scale">Scale:</label>
-            <select id="scale" onchange="YAxisMarks()">
-                <option value="Linear">Linear</option>
-                <option value="Mel" selected>Mel</option>
-            </select>
-            <label for="colormap">Colormap:</label>
-            <select id="colormap" onchange="plot_colormap()">
-                <option value="jet">jet</option>
-                <option value="hot" selected>hot</option>
-            </select>
-            <label for="speed">Speed:</label>
-            <select id="speed" onchange="PlotSpectro1()">
-                <option value="1">Speed: 1</option>
-                <option value="2">Speed: 2</option>
-                <option value="3">Speed: 3</option>
-                <option value="4" selected>Speed: 4</option>
-                <option value="5">Speed: 5</option>
-                <option value="6">Speed: 6</option>
-                <option value="7">Speed: 7</option>
-                <option value="8">Speed: 8</option>
-                <option value="9">Speed: 9</option>
-                <option value="10">Speed: 10</option>
+            <div class="control-row">
+                <label for="scale">Scale</label>
+                <select id="scale">
+                    <option value="Linear">Linear</option>
+                    <option value="Mel" selected>Mel</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label for="colormap">Colormap</label>
+                <select id="colormap"></select>
+            </div>
+            <div class="control-row">
+                <label for="speed">Speed</label>
+                <select id="speed">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                </select>
+            </div>
+        </fieldset>
 
-            </select>
-            <!-- Add similar labels for other select elements -->
-        </fieldset class="fieldset">
-        <fieldset class="fieldset">
-            <legend>Spectrogram Parameters</legend>
-            <label for="sizeFFT">Buffer Size:</label>
-            <select id="sizeFFT" onchange="callback(stream)">
-                <option value="2048">2048</option>
-                <option value="4096">4096</option>
-                <option value="8192" selected>8192</option>
-            </select>
-            <label for="f_min">Min Frequency:</label>
-            <input id="f_min" type="number" min="0" max="20000" value="0">
-            <label for="f_max">Max Frequency:</label>
-            <input id="f_max" type="number" min="0" max="20000" value="9000">
-        </fieldset class="fieldset">
-        <fieldset class="fieldset">
+        <fieldset>
+            <legend>Spectrogram</legend>
+            <div class="control-row">
+                <label for="sizeFFT">Buffer Size</label>
+                <select id="sizeFFT">
+                    <option value="2048">2048</option>
+                    <option value="4096">4096</option>
+                    <option value="8192" selected>8192</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label for="f_min">Min Freq (Hz)</label>
+                <input id="f_min" type="number" min="0" max="20000" value="0">
+            </div>
+            <div class="control-row">
+                <label for="f_max">Max Freq (Hz)</label>
+                <input id="f_max" type="number" min="0" max="20000" value="9000">
+            </div>
+        </fieldset>
+
+        <fieldset>
             <legend>General</legend>
-            <button onclick="DisplayMultiLineAlert()">Info</button>
-            <label id="my_element" for="sensibility">Sensibility:</label>
-            <input id="sensibility" type="range" value="60" min="10" max="100"
-                oninput="this.nextElementSibling.value = this.value">
-            <output id="output_sensibility">60</output> dB
-            <label for="scrolling">Scrolling</label>
-            <input type="checkbox" id="scrolling" checked>
-            <label for="stop">Pause</label>
-            <input type="checkbox" id="stop">
-            <label for="window">Window:</label>
-            <select id="window">
-                <option value="None">None</option>
-                <option value="Cosine">Cosine</option>
-                <option value="Hanning">Hanning</option>
-                <option value="BH7" selected>Blackman Harris 7</option>
-            </select>
-            <label for="FFT">FFT Function:</label>
-            <select id="FFT" onchange="SetDefaultWindow()">
-                <option value="myFFT" selected>Custom FFT</option>
-                <option value="WebAudio">Web Audio</option>
-            </select>
-            <label for="microphone">Microphone:</label>
-            <select id="microphone" onchange="selectAndStartMic(this.value)"></select>
-        </fieldset class="fieldset">
+            <div class="control-row">
+                <label for="sensibility">Sensitivity</label>
+                <div class="range-group">
+                    <input id="sensibility" type="range" value="60" min="10" max="100">
+                    <output id="output_sensibility">60</output>
+                    <span>dB</span>
+                </div>
+            </div>
+            <div class="control-row">
+                <label for="scrolling">Scrolling</label>
+                <input type="checkbox" id="scrolling" checked>
+            </div>
+            <div class="control-row">
+                <label for="stop">Pause</label>
+                <input type="checkbox" id="stop">
+            </div>
+            <div class="control-row">
+                <label for="window">Window</label>
+                <select id="window">
+                    <option value="None">None</option>
+                    <option value="Cosine">Cosine</option>
+                    <option value="Hanning">Hanning</option>
+                    <option value="BH7" selected>Blackman-Harris 7</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label for="FFT">FFT Engine</label>
+                <select id="FFT">
+                    <option value="myFFT" selected>Custom FFT</option>
+                    <option value="WebAudio">Web Audio</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label for="microphone">Microphone</label>
+                <select id="microphone"></select>
+            </div>
+        </fieldset>
 
-        <!-- <canvas class="canvas"></canvas> -->
+        <div class="panel-actions">
+            <button id="screenshot-btn">Screenshot (S)</button>
+            <button id="info-btn">Info</button>
+        </div>
+
+        <div class="shortcuts-hint">
+            Space: pause &middot; S: screenshot &middot; F: fullscreen &middot; Esc: close
+        </div>
     </div>
 
-    <script src="./js-colormaps.js"></script>
-    <script src="./spectrogram.js"></script>
-    <script>
-        function toggleContent() {
-            var content = document.getElementById('content');
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-            } else {
-                content.style.display = 'none';
-            }
-        }
-        </script>
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>System Info</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <pre id="info-text"></pre>
+        </div>
+    </div>
+
+    <script src="js-colormaps.js"></script>
+    <script src="spectrogram.js"></script>
 </body>
 
 </html>

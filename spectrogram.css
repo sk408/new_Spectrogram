@@ -1,71 +1,384 @@
-                                                                                
+/* ============================================================
+   Live Spectrogram — Styles
+   ============================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body {
-    background-color: #00b5e2;
-    font-family: Arial, sans-serif;
-    font-size: 12pt;
-
+    background: #1a1a2e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    color: #e0e0e0;
+    overflow: hidden;
 }
 
-canvas {
-    background-color: black;
+/* --- Canvas --- */
 
-    padding-left: 0;
-    padding-right: 0;
-
-    margin-left: 0%;
-    margin-right: 0%;
+#canvas {
     display: block;
-    width: 100%;
-
-    border:3px solid #d3d3d3;
+    width: 100vw;
+    background: black;
+    border-bottom: 2px solid #333;
 }
 
-#block_container {
-    margin: 2em 0;
+/* --- Status Bar --- */
+
+#status {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: #ff6b6b;
+    padding: 16px 28px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    font-size: 14px;
+    z-index: 100;
+    text-align: center;
+    max-width: 80vw;
+    display: none;
+    pointer-events: none;
 }
 
-.block_container {
-    margin: 1em 0;
-}
-
-.block_container label {
+#status:not(:empty) {
     display: block;
-    margin-left: 10%;
-    background-color: #003B5C;
-    color: white;
-}
-#my_element,
-.block_container select,
-.block_container input[type="range"],
-.block_container input[type="checkbox"],
-.block_container input[type="number"],
-.block_container output {
-    margin-left: 10%;
 }
 
-h1 {
-    font-size: 8pt;
-    font-family: arial;
-    color: black;
-    text-align: center;
-}
+/* --- Floating Buttons --- */
 
-h2 {
-    font-size: 15pt;
-    font-family: arial;
-    color: black;
-    text-align: center;
-}
-
-#title {
-font-size: 8pt;
-}
-
-#title h1 {
+#settings-toggle,
+#fullscreen-btn {
+    position: fixed;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.5);
+    color: #ccc;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
     cursor: pointer;
-    color: black;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
-#title h1:hover {
-    text-decoration: underline;
+#settings-toggle {
+    bottom: 16px;
+    right: 16px;
+}
+
+#fullscreen-btn {
+    bottom: 16px;
+    right: 64px;
+    font-size: 16px;
+}
+
+#settings-toggle:hover,
+#fullscreen-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* --- Settings Panel --- */
+
+#settings-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100vh;
+    background: #16213e;
+    border-left: 2px solid #0f3460;
+    overflow-y: auto;
+    z-index: 200;
+    padding: 0 0 16px 0;
+    transition: transform 0.25s ease;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+}
+
+#settings-panel.hidden {
+    transform: translateX(100%);
+    box-shadow: none;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #0f3460;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.panel-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+#settings-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+#settings-close:hover {
+    color: #fff;
+}
+
+/* --- Fieldsets --- */
+
+fieldset {
+    border: 1px solid #1a3a5c;
+    border-radius: 6px;
+    margin: 12px 12px 0;
+    padding: 8px 12px 12px;
+}
+
+legend {
+    color: #53a8b6;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 6px;
+}
+
+/* --- Control Rows --- */
+
+.control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+    gap: 8px;
+}
+
+.control-row label {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: #b0b0b0;
+    white-space: nowrap;
+}
+
+.control-row select,
+.control-row input[type="number"] {
+    flex: 1;
+    max-width: 150px;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 5px 6px;
+    font-size: 12px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.control-row select:focus,
+.control-row input[type="number"]:focus {
+    outline: none;
+    border-color: #53a8b6;
+}
+
+.control-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #53a8b6;
+    cursor: pointer;
+}
+
+/* --- Range Input --- */
+
+.range-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    max-width: 150px;
+}
+
+.range-group input[type="range"] {
+    flex: 1;
+    accent-color: #53a8b6;
+    height: 4px;
+    cursor: pointer;
+}
+
+.range-group output,
+.range-group span {
+    font-size: 11px;
+    color: #888;
+    min-width: fit-content;
+}
+
+/* --- Panel Actions --- */
+
+.panel-actions {
+    display: flex;
+    gap: 8px;
+    margin: 16px 12px 0;
+}
+
+.panel-actions button {
+    flex: 1;
+    padding: 8px;
+    background: #0f3460;
+    color: #e0e0e0;
+    border: 1px solid #1a3a5c;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.panel-actions button:hover {
+    background: #1a4980;
+}
+
+.panel-actions button:active {
+    background: #0a2a4a;
+}
+
+/* --- Shortcuts Hint --- */
+
+.shortcuts-hint {
+    text-align: center;
+    font-size: 10px;
+    color: #555;
+    margin: 12px 12px 0;
+    padding-top: 8px;
+    border-top: 1px solid #1a3a5c;
+}
+
+/* --- Modal --- */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    min-width: 300px;
+    max-width: 90vw;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #0f3460;
+}
+
+.modal-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #fff;
+}
+
+#info-text {
+    padding: 16px;
+    font-family: "Courier New", monospace;
+    font-size: 12px;
+    color: #b0b0b0;
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+/* --- Scrollbar --- */
+
+#settings-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+#settings-panel::-webkit-scrollbar-track {
+    background: #1a1a2e;
+}
+
+#settings-panel::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+#settings-panel::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 600px) {
+    #settings-panel {
+        width: 100vw;
+    }
+
+    #settings-toggle {
+        bottom: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    #fullscreen-btn {
+        bottom: 12px;
+        right: 56px;
+        width: 36px;
+        height: 36px;
+    }
+
+    .control-row select,
+    .control-row input[type="number"],
+    .range-group {
+        max-width: 130px;
+    }
 }

@@ -1,947 +1,872 @@
-// set up basic variables for app
-var message = "  ";
-var message1 = "  ";
-var message2 = "  ";
-var message3 = "  ";
-var message4 = "  ";
+// ============================================================
+// Live Spectrogram — Real-time Audio Visualization
+// ============================================================
+"use strict";
 
-const canvas = document.querySelector(".canvas");
-const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
-const mainSection = document.querySelector(".main-controls");
-var border_canvas_plot_left;
+// --- Constants ---
+const MEL_CONST = 1127.01048;
+const BH7_COEFFS = Object.freeze([
+  0.27105140069342, -0.43329793923448, 0.21812299954311,
+  -0.06592544638803, 0.01081174209837, -0.00077658482522,
+  0.00001388721735,
+]);
 
-var border_canvas_plot_right;
-var border_canvas_plot_bottom;
-var border_canvas_plot_top;
+// --- Canvas ---
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-applyOrientation();
-
-var imageSpectrogram = new Array(40).fill(0);
-var counter = 0;
-var stop_sound = 0;
-
-var max_intensity;
-var sensibility;
-var sensibility_temp;
-// disable stop button while not recording
-
-// visualiser setup - create web audio api context and canvas
-let animationId;
-
-let audioCtx;
-let debounce;
-const createAudioGraphDebounced = () => {
-  clearTimeout(debounce);
-  debounce = setTimeout(
-    () =>
-      (document.getElementById("stop").checked =
-        !document.getElementById("stop").checked),
-    100,
-  );
+// --- Cached DOM Elements ---
+const dom = {
+  scale:             document.getElementById("scale"),
+  colormap:          document.getElementById("colormap"),
+  speed:             document.getElementById("speed"),
+  sizeFFT:           document.getElementById("sizeFFT"),
+  fMin:              document.getElementById("f_min"),
+  fMax:              document.getElementById("f_max"),
+  sensibility:       document.getElementById("sensibility"),
+  outputSensibility: document.getElementById("output_sensibility"),
+  scrolling:         document.getElementById("scrolling"),
+  stop:              document.getElementById("stop"),
+  windowFunc:        document.getElementById("window"),
+  fft:               document.getElementById("FFT"),
+  microphone:        document.getElementById("microphone"),
+  settingsPanel:     document.getElementById("settings-panel"),
+  settingsToggle:    document.getElementById("settings-toggle"),
+  settingsClose:     document.getElementById("settings-close"),
+  fullscreenBtn:     document.getElementById("fullscreen-btn"),
+  screenshotBtn:     document.getElementById("screenshot-btn"),
+  infoBtn:           document.getElementById("info-btn"),
+  infoModal:         document.getElementById("info-modal"),
+  infoText:          document.getElementById("info-text"),
+  status:            document.getElementById("status"),
 };
 
-let touchstartX = 0;
-let touchstartY = 0;
-let time = 0;
+// --- Layout ---
+let borderLeft, borderRight, borderBottom, borderTop;
 
-const handleGesture = (event) => {
-  const elapsedTime = new Date().getTime() - time;
-  const touchendX = event.changedTouches[0].screenX;
-  const touchendY = event.changedTouches[0].screenY;
-  const dx = touchendX - touchstartX;
-  const dy = touchendY - touchstartY;
-  const dist = Math.sqrt(dx * dx + dy * dy); // distance
-  //   if (elapsedTime < 250 && elapsedTime > 5) {
-  //     event.preventDefault();
-  //   }
-  if (!this.audioContext) {
-    createAudioGraphDebounced();
-  }
+// --- Audio ---
+let audioCtx = null;
+let currentStream = null;
+let animationId = null;
+let analyserNode = null;
 
-  if (elapsedTime > 250 && elapsedTime > 250) {
-    createAudioGraphDebounced();
-  }
-};
-function onKeyDown(e) {
-  if (e.key === " ") createAudioGraphDebounced();
+// --- Rendering State ---
+let bufferLength = 0;
+let fftSize = 8192;
+let colormap = "hot";
+let fNyquist = 22050;
+let fMin = 0;
+let fMax = 9000;
+let iMin = 0;
+let iMax = 0;
+let binWidth = 4;
+let myX = [];
+let myXAbs = null;
+let maxIntensity = -100;
+let sensibility = 60;
+let sensibilityTemp = 60;
+let frecMax = 0;
+let counter = 0;
+let message0 = "";
+
+// --- Pre-allocated Buffers ---
+let timeBuffer = null;
+let freqBuffer = null;
+let absBuffer = null;
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function melScale(f) {
+  return MEL_CONST * Math.log(f / 700 + 1);
 }
 
-canvas.addEventListener("mousedown", function (event) {
-  if (event.target.type !== "checkbox" && event.target.type !== "range") {
-    createAudioGraphDebounced();
-  }
-});
-canvas.addEventListener("keydown", onKeyDown);
-canvas.addEventListener("touchstart", (event) => {
-  touchstartX = event.changedTouches[0].screenX;
-  touchstartY = event.changedTouches[0].screenY;
-  time = new Date().getTime();
-});
-canvas.addEventListener("touchend", handleGesture);
-
-//const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
-//var my_x;
-
-//main block for doing the audio recording
-
-if (!navigator.mediaDevices?.enumerateDevices) {
-  console.log("enumerateDevices() not supported.");
-} else {
-  // let chunks = [];
-
-  // let onSuccess = function(stream) {
-  //     callback(stream);
-  // }
-
-  // let onError = function(err) {
-  //     console.log('The following error occured: ' + err);
-  // }
-
-  navigator.mediaDevices
-    .enumerateDevices()
-    .then((devices) => {
-      this.mics = devices.filter((device) => device.kind === "audioinput");
-
-      // Populate the microphone dropdown
-      const microphoneSelect = document.getElementById("microphone");
-      this.mics.forEach((mic, index) => {
-        const option = document.createElement("option");
-        option.value = mic.deviceId;
-        option.text = mic.label || `Microphone ${index + 1}`;
-        microphoneSelect.appendChild(option);
-      });
-
-      // Select the first microphone by default
-      this.selectAndStartMic(this.mics[0]?.deviceId);
-    console.log("enumerateDevices() not supported.");
-  } else {
-    navigator.mediaDevices.enumerateDevices()
-    .then(devices => {
-        this.mics = devices.filter(device => device.kind === 'audioinput');
-
-        // Populate the microphone dropdown
-        const microphoneSelect = document.getElementById('microphone');
-        this.mics.forEach((mic, index) => {
-            const option = document.createElement('option');
-            option.value = mic.deviceId;
-            option.text = mic.label || `Microphone ${index + 1}`;
-            microphoneSelect.appendChild(option);
-        });
-
-        // Select the first microphone by default
-        this.selectAndStartMic(this.mics[0]?.deviceId);
-    })
-    .catch((err) => console.log(err));
-}
-let currentStream;
-
-function selectAndStartMic(selected) {
-  if (navigator.mediaDevices.getUserMedia) {
-    console.log("getUserMedia supported.");
-
-    // Stop the current stream if it exists
-    if (currentStream) {
-      currentStream.getTracks().forEach((track) => track.stop());
-    }
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-    }
-    let onSuccess = function (stream) {
-      currentStream = stream;
-      callback(stream);
-    };
-
-    let onError = function (err) {
-      console.log("The following error occured: " + err);
-    };
-
-    const constraints = {
-      audio: { deviceId: selected ? { exact: selected } : undefined },
-    };
-    navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
-  } else {
-    console.log("getUserMedia not supported on your browser!");
-  }
+function getFont(size) {
+  return ((canvas.width * size / 1000) | 0) + "px sans-serif";
 }
 
-var analyser;
-var bufferLength;
-var dataTime;
-var dataFrec;
-var fftSize = parseInt(document.getElementById("sizeFFT").value);
-
-var colormap;
-var frec_max1;
-var bin_width = 4;
-var my_x;
-var my_X_abs;
-
-var startTime, endTime;
-
-var f_Nyquist;
-var f_min;
-var f_max;
-var i_min;
-var i_max;
-var num_bin = Math.floor((900 - border_canvas_plot_left - border_canvas_plot_right) / bin_width);
-
-const BH7 = [
-    0.27105140069342,
-    -0.43329793923448,
-    0.21812299954311,
-    -0.06592544638803,
-    0.01081174209837,
-    -0.00077658482522,
-    0.00001388721735
-];
-
-function callback(stream) {
-    if (!audioCtx) {
-        audioCtx = new AudioContext({
-            latencyHint: 'interactive',
-            sampleRate: 44100,
-        });
-
-    }
-
-    const source = audioCtx.createMediaStreamSource(stream);
-
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = fftSize;
-    analyser.minDecibels = -40;
-
-    bufferLength = analyser.frequencyBinCount;
-
-    dataTime = new Float32Array(bufferLength * 2);
-    //const dataFrec = new Float32Array(bufferLength);
-    dataFrec = new Float32Array(bufferLength);
-    const sr = audioCtx.sampleRate;
-
-    //document.getElementById("console4").innerHTML = "Velocidad de Muestreo en Hz = " + sr.toString();
-    message0 = "Sampling rate: " + sr.toString() + " Hz";
-    source.connect(analyser);
-    //analyser.connect(audioCtx.destination);
-
-
-    Plot();
-
-    function Plot() {
-        analyser.fftSize = fftSize;
-        bufferLength = analyser.frequencyBinCount;
-        if (!dataTime || dataTime.length !== bufferLength * 2 || !(dataTime instanceof Uint8Array)) {
-            dataTime = new Uint8Array(bufferLength * 2);
-        }
-        if (!dataFrec || dataFrec.length !== bufferLength || !(dataFrec instanceof Float32Array)) {
-            dataFrec = new Float32Array(bufferLength);
-        }
-        YaxisMarks();
-
-  const source = audioCtx.createMediaStreamSource(stream);
-
-  const analyser = audioCtx.createAnalyser();
-  analyser.fftSize = fftSize;
-  analyser.minDecibels = -40;
-
-  bufferLength = analyser.frequencyBinCount;
-
-  dataTime = new Float32Array(bufferLength * 2);
-  //const dataFrec = new Float32Array(bufferLength);
-  dataFrec = new Float32Array(bufferLength);
-  const sr = audioCtx.sampleRate;
-
-  //document.getElementById("console4").innerHTML = "Velocidad de Muestreo en Hz = " + sr.toString();
-  message0 = "Sampling rate: " + sr.toString() + " Hz";
-  source.connect(analyser);
-  //analyser.connect(audioCtx.destination);
-
-  Plot();
-
-  function Plot() {
-    analyser.fftSize = fftSize;
-    bufferLength = analyser.frequencyBinCount;
-    dataTime = new Uint8Array(bufferLength * 2);
-    dataFrec = new Float32Array(bufferLength);
-    YaxisMarks();
-
-    colormap = document.getElementById("colormap").value;
-    f_min = parseFloat(document.getElementById("f_min").value);
-    f_max = parseFloat(document.getElementById("f_max").value);
-
-    bin_width = parseInt(document.getElementById("speed").value);
-    startTime = performance.now();
-
-    analyser.getByteTimeDomainData(dataTime);
-    analyser.getFloatFrequencyData(dataFrec);
-
-    counter += 1;
-
-    my_x = [...dataTime];
-
-    const sampled_time = (my_x.length / sr) * 1000;
-
-    //document.getElementById("console5").innerHTML = "Número de Muestras en Tiempo: " + my_x.length.toString() + " Tiempo Muestreado = " + (Math.round(sampled_time)).toString();
-
-        var mean = 0;
-        for (var i = 0; i < my_x.length; i++) {
-            mean = mean + my_x[i];
-        }
-        mean = mean / my_x.length
-        var window = document.getElementById("window").value;
-        for (var i = 0; i < my_x.length; i++) {
-            //if (document.getElementById("window").checked == true) {
-            if (window == "None") {
-                my_x[i] = (my_x[i] - mean);
-            } else if (window == "Cosine") {
-                my_x[i] = (my_x[i] - mean) * Math.sin(Math.PI * i / my_x.length);
-            } else if (window == "Hanning") {
-                my_x[i] = (my_x[i] - mean) * 0.5 * (1 - Math.cos(2 * Math.PI * i / my_x.length));;
-
-            } else if (window == "BH7") {
-
-                let w = 0;
-                for (let j = 0; j < 7; j++) {
-                    w += BH7[j] * Math.cos(2 * Math.PI * j * i / my_x.length);
-                }
-                my_x[i] = (my_x[i] - mean) * w;
-            }
-        }
-
-    var mean = 0;
-    for (var i = 0; i < my_x.length; i++) {
-      mean = mean + my_x[i];
-    }
-    mean = mean / my_x.length;
-    var window = document.getElementById("window").value;
-    let BH7 = new Array(7).fill(0);
-    BH7[0] = 0.27105140069342;
-    BH7[1] = -0.43329793923448;
-    BH7[2] = 0.21812299954311;
-    BH7[3] = -0.06592544638803;
-    BH7[4] = 0.01081174209837;
-    BH7[5] = -0.00077658482522;
-    BH7[6] = 0.00001388721735;
-    for (var i = 0; i < my_x.length; i++) {
-      //if (document.getElementById("window").checked == true) {
-      if (window == "None") {
-        my_x[i] = my_x[i] - mean;
-      } else if (window == "Cosine") {
-        my_x[i] = (my_x[i] - mean) * Math.sin((Math.PI * i) / my_x.length);
-      } else if (window == "Hanning") {
-        my_x[i] =
-          (my_x[i] - mean) *
-          0.5 *
-          (1 - Math.cos((2 * Math.PI * i) / my_x.length));
-      } else if (window == "BH7") {
-        let w = 0;
-        for (let j = 0; j < 7; j++) {
-          w += BH7[j] * Math.cos((2 * Math.PI * j * i) / my_x.length);
-        }
-        my_x[i] = (my_x[i] - mean) * w;
-      }
-    }
-
-    PlotMic();
-    my_X_abs = new Float64Array(my_x.length / 2).fill(0);
-
-    if (document.getElementById("FFT").value == "myFFT") {
-      fft = myFFT(my_x);
-
-      max_intensity = -100;
-      for (var i = 1; i < my_x.length / 2; i += 1) {
-        //my_X_abs[i] = 10 * Math.log10((fft[i].re * fft[i].re + fft[i].im * fft[i].im)) - baseline - 20;
-        my_X_abs[i] =
-          10 * Math.log10(fft[i].re * fft[i].re + fft[i].im * fft[i].im) - 20;
-        if (my_X_abs[i] > max_intensity) max_intensity = my_X_abs[i];
-      }
-    } else if (document.getElementById("FFT").value == "WebAudio") {
-      const aa = document.getElementById("window");
-      aa.value = "None";
-      var my_frec = [...dataFrec];
-      for (var i = 1; i < my_x.length / 2; i += 1) {
-        my_frec[i] = my_frec[i] + 125;
-        if (my_frec[i] > max_intensity) max_intensity = my_frec[i];
-      }
-      my_X_abs = my_frec;
-    }
-    i_min = Math.floor((my_X_abs.length * f_min) / f_Nyquist);
-    i_max = Math.floor((my_X_abs.length * f_max) / f_Nyquist);
-
-    var ts = new Array(my_x.length / 2).fill(0);
-    var frec1 = new Array(my_x.length / 2).fill(0);
-    var frec2 = new Array(my_x.length).fill(0);
-    const max_frec1 = Math.max(...my_X_abs);
-    const index_frec1 = my_X_abs.indexOf(max_frec1);
-    frec_max1 = ((index_frec1 / my_X_abs.length) * audioCtx.sampleRate) / 2;
-
-    canvasCtx.fillStyle = "lightblue";
-    canvasCtx.fillRect(
-      border_canvas_plot_top,
-      border_canvas_plot_top,
-      canvas.width / 10 + border_canvas_plot_left - 2 * border_canvas_plot_top,
-      canvas.height / 10 - border_canvas_plot_top,
-    );
-    canvasCtx.fillStyle = "black";
-    canvasCtx.font = getFont(25);
-
-    var centro = (border_canvas_plot_top + canvas.height / 10) / 2;
-    //canvasCtx.fillText(Math.round(frec_max1).toString() + " Hz", canvas.width / 40, centro);
-    canvasCtx.textAlign = "right";
-    canvasCtx.fillText(
-      Math.round(frec_max1).toString() + " Hz",
-      canvas.width / 8,
-      centro,
-    );
-
-    canvasCtx.fillStyle = "black";
-
-    endTime = performance.now();
-
-    message3 =
-      "Time between animation frames: " +
-      Math.round(endTime - startTime).toString() +
-      " ms";
-
-    PlotFFT();
-
-    PlotSpectro1();
-
-    animationId = requestAnimationFrame(Plot);
-  }
+function setStatus(msg) {
+  if (dom.status) dom.status.textContent = msg || "";
 }
 
-function myFFT(signal) {
-  if (signal.length == 1) return signal;
-  var halfLength = signal.length / 2;
-  var even = [];
-  var odd = [];
-  even.length = halfLength;
-  odd.length = halfLength;
-  for (var i = 0; i < halfLength; ++i) {
-    even[i] = signal[i * 2];
-    odd[i] = signal[i * 2 + 1];
+// ============================================================
+// Colormap Dropdown Population
+// ============================================================
+
+function populateColormaps() {
+  const select = dom.colormap;
+  const preferred = [
+    "hot", "jet", "viridis", "plasma", "inferno", "magma", "turbo",
+    "bone", "cool", "copper", "gray", "afmhot", "gist_heat", "YlOrRd",
+    "Spectral", "RdYlBu", "cubehelix", "ocean", "terrain",
+  ];
+  const allNames = Object.keys(data).filter(n => !n.endsWith("_r"));
+  const rest = allNames.filter(n => !preferred.includes(n)).sort();
+
+  select.innerHTML = "";
+
+  const prefGroup = document.createElement("optgroup");
+  prefGroup.label = "Recommended";
+  for (const name of preferred) {
+    if (name in data) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      prefGroup.appendChild(opt);
+    }
   }
-  even = myFFT(even);
-  odd = myFFT(odd);
-  for (var k = 0; k < halfLength; ++k) {
-    if (!(even[k] instanceof Complex)) even[k] = new Complex(even[k], 0);
-    if (!(odd[k] instanceof Complex)) odd[k] = new Complex(odd[k], 0);
-    var a = Math.cos((2 * Math.PI * k) / signal.length);
-    var b = Math.sin((-2 * Math.PI * k) / signal.length);
-    var temp_k_real = odd[k].re * a - odd[k].im * b;
-    var temp_k_imag = odd[k].re * b + odd[k].im * a;
-    var A_k = new Complex(even[k].re + temp_k_real, even[k].im + temp_k_imag);
-    var B_k = new Complex(even[k].re - temp_k_real, even[k].im - temp_k_imag);
-    signal[k] = A_k;
-    signal[k + halfLength] = B_k;
+  select.appendChild(prefGroup);
+
+  const otherGroup = document.createElement("optgroup");
+  otherGroup.label = "All Colormaps";
+  for (const name of rest) {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    otherGroup.appendChild(opt);
   }
-  return signal;
+  select.appendChild(otherGroup);
+
+  select.value = "hot";
 }
 
-function Complex(re, im) {
-  this.re = re;
-  this.im = im || 0.0;
+// ============================================================
+// LocalStorage Persistence
+// ============================================================
+
+const STORAGE_KEY = "spectrogram_settings";
+
+function saveSettings() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      scale: dom.scale.value,
+      colormap: dom.colormap.value,
+      speed: dom.speed.value,
+      sizeFFT: dom.sizeFFT.value,
+      fMin: dom.fMin.value,
+      fMax: dom.fMax.value,
+      sensibility: dom.sensibility.value,
+      scrolling: dom.scrolling.checked,
+      windowFunc: dom.windowFunc.value,
+      fft: dom.fft.value,
+    }));
+  } catch (_) { /* storage unavailable */ }
 }
 
-const HSLToRGB = (h, s, l) => {
-  s /= 100;
-  l /= 100;
-  const k = (n) => (n + h / 30) % 12;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n) =>
-    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  return [255 * f(0), 255 * f(8), 255 * f(4)];
-};
-
-function PlotMic() {
-  var scale_v = canvas.height / 760;
-  var atenuacion = 0.4;
-  f_Nyquist = audioCtx.sampleRate / 2;
-  canvasCtx.lineWidth = 1;
-
-  canvasCtx.fillStyle = "#003B5C";
-  //canvasCtx.fillStyle = 'green';
-  canvasCtx.fillRect(
-    canvas.width / 10 + border_canvas_plot_left,
-    0,
-    0.9 * canvas.width - border_canvas_plot_right - border_canvas_plot_left,
-    canvas.height / 10 + border_canvas_plot_top,
-  );
-
-  canvasCtx.beginPath();
-  let x = canvas.width / 10 + border_canvas_plot_left;
-
-  canvasCtx.strokeStyle = "white";
-  var centro = (canvas.height / 10 + border_canvas_plot_top) / 2;
-  for (let i = 0; i < my_x.length; i++) {
-    var y = my_x[i] * atenuacion + centro;
-
-    if (i == 0) {
-      canvasCtx.moveTo(x, centro);
-    } else {
-      y = centro + (y - centro) * scale_v; // scale to screen size
-      if (y > canvas.height / 10 + border_canvas_plot_top - 1) {
-        y = canvas.height / 10 + border_canvas_plot_top - 1;
-      }
-      canvasCtx.lineTo(x, y);
-    }
-
-    x +=
-      (0.9 * canvas.width -
-        border_canvas_plot_left -
-        border_canvas_plot_right) /
-      my_x.length;
-  }
-  canvasCtx.stroke();
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.scale) dom.scale.value = s.scale;
+    if (s.colormap) dom.colormap.value = s.colormap;
+    if (s.speed) dom.speed.value = s.speed;
+    if (s.sizeFFT) dom.sizeFFT.value = s.sizeFFT;
+    if (s.fMin != null) dom.fMin.value = s.fMin;
+    if (s.fMax != null) dom.fMax.value = s.fMax;
+    if (s.sensibility != null) dom.sensibility.value = s.sensibility;
+    if (s.scrolling !== undefined) dom.scrolling.checked = s.scrolling;
+    if (s.windowFunc) dom.windowFunc.value = s.windowFunc;
+    if (s.fft) dom.fft.value = s.fft;
+    dom.outputSensibility.textContent = dom.sensibility.value;
+  } catch (_) { /* ignore */ }
 }
 
-function PlotFFT() {
-  var scale_h = canvas.width / 1440;
-
-  canvasCtx.lineWidth = 1;
-  canvasCtx.strokeStyle = "hsl(" + 360 * 0 + ",100%,50%)";
-
-  canvasCtx.fillStyle = "#003B5C";
-  //canvasCtx.fillStyle = 'green';
-  canvasCtx.fillRect(
-    0,
-    canvas.height / 10 + border_canvas_plot_top,
-    (0.9 * canvas.width) / 10,
-    0.9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top,
-  );
-
-  var y;
-  let Y0 = canvas.height / 10 + border_canvas_plot_top;
-  var deltaY0 =
-    0.9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
-
-  var deltaY =
-    (canvas.height -
-      canvas.height / 10 -
-      border_canvas_plot_top -
-      border_canvas_plot_bottom) /
-    (i_max - i_min);
-
-  var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
-  var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
-  var scaleValue = document.getElementById("scale").value;
-  for (let i = i_min; i < i_max; i++) {
-    var freq2 = f_min + ((f_max - f_min) * (i - i_min)) / (i_max - i_min);
-    if (scaleValue == "Linear") {
-      y = Y0 + deltaY0 - (deltaY0 * (i - i_min)) / (i_max - i_min);
-    } else if (scaleValue == "Mel") {
-      var mel_i = 1127.01048 * Math.log(freq2 / 700 + 1);
-
-      var y =
-        Y0 +
-        deltaY0 -
-        (deltaY0 * (mel_i - mel_i_min)) / (mel_i_max - mel_i_min);
-    }
-    scale_h = canvas.width / 1440;
-    let x = -my_X_abs[i] * scale_h + (0.9 * canvas.width) / 10;
-
-    var value = my_X_abs[i] / sensibility;
-
-    canvasCtx.strokeStyle = "hsl(" + 360 * (1 - value) + ",100%,50%)";
-    canvasCtx.beginPath();
-
-    canvasCtx.moveTo((0.9 * canvas.width) / 10, y);
-
-    if (my_X_abs[i] > 0) canvasCtx.lineTo(x, y);
-
-    canvasCtx.stroke();
-  }
-
-  y = canvas.height - border_canvas_plot_bottom;
-
-  canvasCtx.beginPath();
-  canvasCtx.strokeStyle = "white";
-  sensibility = document.getElementById("sensibility").value;
-  var scaleValue = document.getElementById("scale").value;
-  for (let i = i_min; i < i_max; i++) {
-    if (scaleValue == "Linear") {
-      y = Y0 + deltaY0 - (deltaY0 * (i - i_min)) / (i_max - i_min);
-    } else if (scaleValue == "Mel") {
-      var freq = f_min + ((f_max - f_min) * (i - i_min)) / (i_max - i_min);
-
-      var mel_i = 1127.01048 * Math.log(freq / 700 + 1);
-      var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
-      var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
-      y =
-        Y0 +
-        deltaY0 -
-        (deltaY0 * (mel_i - mel_i_min)) / (mel_i_max - mel_i_min);
-    }
-    let x = -my_X_abs[i] * scale_h + (0.9 * canvas.width) / 10;
-
-    if (i === i_min) {
-      canvasCtx.moveTo((0.9 * canvas.width) / 10, y);
-    } else {
-      if (my_X_abs[i] > 0) canvasCtx.lineTo(x, y);
-    }
-    y -= deltaY;
-  }
-  canvasCtx.stroke();
-  //Draw vertical line
-  if (max_intensity > sensibility) {
-    sensibility_temp = max_intensity;
-    ColormapMarks();
-  } else {
-    sensibility_temp = sensibility;
-  }
-  ColormapMarks();
-  document.getElementById("output_sensibility").innerHTML =
-    Math.floor(sensibility_temp);
-  document.getElementById("sensibility").value = Math.floor(sensibility_temp);
-
-  canvasCtx.moveTo(-sensibility_temp * scale_h + (0.9 * canvas.width) / 10, Y0);
-  canvasCtx.lineTo(
-    -sensibility_temp * scale_h + (0.9 * canvas.width) / 10,
-    Y0 + deltaY0,
-  );
-  canvasCtx.stroke();
-}
-
-function PlotSpectro1() {
-  fftSize = parseInt(document.getElementById("sizeFFT").value);
-  canvasCtx.lineWidth = 1;
-
-  canvasCtx.fillStyle = "white";
-  let X0 = Math.floor(canvas.width / 10 + border_canvas_plot_left);
-  let deltaX0 = Math.floor(
-    0.9 * canvas.width -
-      border_canvas_plot_left -
-      border_canvas_plot_right -
-      bin_width,
-  );
-
-  let X1 = canvas.width / 10 + border_canvas_plot_left + bin_width;
-  let Y0 = canvas.height / 10 + border_canvas_plot_top;
-  var deltaY0 =
-    0.9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
-
-  var deltaY = deltaY0 / (i_max - i_min);
-  if (document.getElementById("stop").checked == false) {
-    if (document.getElementById("scrolling").checked == true) {
-      var imgData = canvasCtx.getImageData(
-        X0 + bin_width,
-        Y0,
-        deltaX0 - bin_width,
-        deltaY0,
-      );
-      canvasCtx.putImageData(imgData, X0, Y0);
-    } else {
-      var imgData = canvasCtx.getImageData(
-        X0 + 1,
-        Y0,
-        deltaX0 - bin_width - 1,
-        deltaY0,
-      );
-      canvasCtx.putImageData(imgData, X0 + bin_width, Y0);
-    }
-  }
-  var y;
-
-  var i_caja = 0;
-  var scaleValue = document.getElementById("scale").value;
-  for (let i = i_min; i < i_max; i++) {
-    if (scaleValue == "Linear") {
-      y = Y0 + deltaY0 - (deltaY0 * (i - i_min)) / (i_max - i_min);
-    } else if (scaleValue == "Mel") {
-      var freq = f_min + ((f_max - f_min) * (i - i_min)) / (i_max - i_min);
-      var mel_i = 1127.01048 * Math.log(freq / 700 + 1);
-      var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
-      var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
-
-      y =
-        Y0 +
-        deltaY0 -
-        (deltaY0 * (mel_i - mel_i_min)) / (mel_i_max - mel_i_min);
-    }
-    var y;
-
-    var i_caja = 0;
-
-    let scaleValue = document.getElementById("scale").value;
-    let isLinear = scaleValue == "Linear";
-    let isMel = scaleValue == "Mel";
-    let isScrolling = document.getElementById("scrolling").checked == true;
-
-    var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
-    var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
-    var deltaF = f_max - f_min;
-    var deltaI = i_max - i_min;
-
-    for (let i = i_min; i < i_max; i++) {
-        if (isLinear) {
-            y = Y0 + deltaY0 - deltaY0 * (i - i_min) / deltaI;
-        } else if (isMel) {
-            var freq = f_min + deltaF * (i - i_min) / deltaI;
-            var mel_i = 1127.01048 * Math.log(freq / 700 + 1);
-
-            y = Y0 + deltaY0 - deltaY0 * (mel_i - mel_i_min) / (mel_i_max - mel_i_min);
-        }
-
-
-        var value = my_X_abs[i] / (sensibility);
-        if (value > 1) value = 1;
-
-        var myrgb = evaluate_cmap(value, colormap, false);
-        canvasCtx.strokeStyle = 'rgb(' + myrgb + ')';
-
-
-        canvasCtx.beginPath();
-        if (isScrolling) {
-            canvasCtx.moveTo(X0 + deltaX0, y);
-
-    var value = my_X_abs[i] / sensibility;
-    if (value > 1) value = 1;
-
-    var myrgb = evaluate_cmap(value, colormap, false);
-    canvasCtx.strokeStyle = "rgb(" + myrgb + ")";
-
-    canvasCtx.beginPath();
-    if (document.getElementById("scrolling").checked == true) {
-      canvasCtx.moveTo(X0 + deltaX0, y);
-
-      canvasCtx.lineTo(X0 + deltaX0 - bin_width, y);
-    } else {
-      canvasCtx.moveTo(X0, y);
-
-      canvasCtx.lineTo(X0 + bin_width, y);
-    }
-
-    canvasCtx.stroke();
-  }
-
-  canvasCtx.font = getFont(10);
-}
-
-function YaxisMarks() {
-  canvasCtx.fillStyle = "white";
-  let X0 = canvas.width / 10 + border_canvas_plot_left;
-  let Y0 = canvas.height / 10 + border_canvas_plot_top;
-  var deltaY0 =
-    0.9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
-
-  canvasCtx.fillRect(
-    (0.9 * canvas.width) / 10,
-    Y0 - border_canvas_plot_top,
-    (0.1 * canvas.width) / 10 + border_canvas_plot_left,
-    Y0 + deltaY0,
-  );
-  canvasCtx.fillStyle = "black";
-  canvasCtx.font = getFont(10);
-
-  canvasCtx.textAlign = "right";
-
-  var scaleValue = document.getElementById("scale").value;
-  if (scaleValue == "Linear") {
-    var Yaxis = new Array();
-    Yaxis = [
-      100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500,
-      6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000,
-      13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000,
-    ];
-    for (var j = 0; j < Yaxis.length; j++) {
-      var y = Y0 + deltaY0 - (deltaY0 * (Yaxis[j] - f_min)) / (f_max - f_min);
-      if (Yaxis[j] <= f_max) {
-        canvasCtx.textBaseline = "middle";
-        //canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - 1. * border_canvas_plot_left, y);
-        canvasCtx.fillText(
-          Yaxis[j].toString() + " Hz",
-          X0 - border_canvas_plot_top,
-          y,
-        );
-      }
-      canvasCtx.strokeStyle = "black";
-      canvasCtx.beginPath();
-      if (Yaxis[j] <= f_max) {
-        canvasCtx.moveTo(X0, y);
-        canvasCtx.lineTo(X0 - 4, y);
-        canvasCtx.moveTo((0.9 * canvas.width) / 10, y);
-        canvasCtx.lineTo((0.9 * canvas.width) / 10 + 4, y);
-      }
-      canvasCtx.stroke();
-    }
-  } else if (scaleValue == "Mel") {
-    var Yaxis = new Array();
-    Yaxis = [
-      100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000,
-      9000, 10000, 11000, 13000, 15000, 17000, 20000,
-    ];
-    let y0 = canvas.height - border_canvas_plot_bottom;
-    for (var j = 0; j < Yaxis.length; j++) {
-      var mel_i = 1127.01048 * Math.log(Yaxis[j] / 700 + 1);
-      //console.log(mel_i + " " + Yaxis[j])
-      var mel_i_min = 1127.01048 * Math.log(f_min / 700 + 1);
-      var mel_i_max = 1127.01048 * Math.log(f_max / 700 + 1);
-      var y =
-        Y0 +
-        deltaY0 -
-        (deltaY0 * (mel_i - mel_i_min)) / (mel_i_max - mel_i_min);
-
-      //var y = y0 - deltaY0 * (Math.log(Yaxis[i]) - Math.log(f_min)) / (Math.log(f_max) - Math.log(f_min));
-      if (Yaxis[j] <= f_max) {
-        canvasCtx.textBaseline = "middle";
-        //canvasCtx.fillText(Yaxis[j].toString() + " Hz", X0 - 1. * border_canvas_plot_left, y);
-        canvasCtx.fillText(
-          Yaxis[j].toString() + " Hz",
-          X0 - border_canvas_plot_top,
-          y,
-        );
-      }
-      canvasCtx.strokeStyle = "black";
-      canvasCtx.beginPath();
-      if (Yaxis[j] <= f_max) {
-        canvasCtx.moveTo(X0, y);
-        canvasCtx.lineTo(X0 - 4, y);
-        canvasCtx.moveTo((0.9 * canvas.width) / 10, y);
-
-        canvasCtx.lineTo((0.9 * canvas.width) / 10 + 4, y);
-      }
-      canvasCtx.stroke();
-    }
-  }
-}
-
-window.onresize = function (event) {
-  applyOrientation();
-};
+// ============================================================
+// Canvas Layout
+// ============================================================
 
 function applyOrientation() {
   if (window.innerHeight > window.innerWidth) {
-    //alert("You are now in portrait");
     canvas.width = window.innerWidth;
-    //canvas.height = (window.innerHeight);
     canvas.height = (canvas.width * 400) / 700;
-    //YaxisMarks();
   } else {
-    //alert("You are now in landscape");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    //YaxisMarks();
   }
-  border_canvas_plot_left = canvas.width / 20;
-  border_canvas_plot_right = canvas.width / 10;
-
-  var scale_v = canvas.height / 760;
-  border_canvas_plot_bottom = 80 * scale_v;
-  border_canvas_plot_top = 10 * scale_v;
-  plot_colormap();
-  var my_element = document.getElementById("my_element");
-
-  my_element.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-    inline: "nearest",
-  });
+  borderLeft = canvas.width / 20;
+  borderRight = canvas.width / 10;
+  const scaleV = canvas.height / 760;
+  borderBottom = 80 * scaleV;
+  borderTop = 10 * scaleV;
+  plotColormap();
 }
 
-function DisplayMultiLineAlert() {
-  var newLine = "\r\n";
-  message = message0;
-  message += newLine;
-  message += message1;
-  message += newLine;
-  message += message2;
-  message += newLine;
-  message += message3;
-  message4 =
-    "Screen resolution is: " +
-    screen.width +
-    "x" +
-    screen.height +
-    " " +
-    window.screen.availWidth +
-    " " +
-    window.screen.availHeight +
-    " " +
-    window.innerWidth +
-    " " +
-    window.innerHeight +
-    " " +
-    canvas.width +
-    " " +
-    canvas.height;
-  message += newLine;
-  message += message4;
-  message += newLine;
-  alert(message);
+// ============================================================
+// Pause Toggle (debounced)
+// ============================================================
+
+let debounceTimer = null;
+
+function togglePause() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    dom.stop.checked = !dom.stop.checked;
+  }, 100);
 }
 
-function plot_colormap() {
-  colormap = document.getElementById("colormap").value;
-  let Y0 = Math.floor(canvas.height / 10 + border_canvas_plot_top);
-  var deltaY0 = Math.floor(
-    0.9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top,
+// ============================================================
+// Microphone Management
+// ============================================================
+
+async function initMicrophones() {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    setStatus("enumerateDevices() not supported in this browser.");
+    return;
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter(d => d.kind === "audioinput");
+
+    dom.microphone.innerHTML = "";
+    mics.forEach((mic, i) => {
+      const opt = document.createElement("option");
+      opt.value = mic.deviceId;
+      opt.textContent = mic.label || `Microphone ${i + 1}`;
+      dom.microphone.appendChild(opt);
+    });
+
+    if (mics.length > 0) {
+      selectAndStartMic(mics[0].deviceId);
+    } else {
+      setStatus("No microphones found.");
+    }
+  } catch (err) {
+    setStatus("Error accessing microphones: " + err.message);
+  }
+}
+
+async function selectAndStartMic(deviceId) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setStatus("getUserMedia not supported in this browser.");
+    return;
+  }
+
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+  }
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: deviceId ? { exact: deviceId } : undefined },
+    });
+    setStatus("");
+    startVisualization(currentStream);
+  } catch (err) {
+    setStatus("Microphone access denied. Click canvas or grant permission to start.");
+  }
+}
+
+// ============================================================
+// Audio Pipeline
+// ============================================================
+
+function startVisualization(stream) {
+  if (!audioCtx) {
+    audioCtx = new AudioContext({
+      latencyHint: "interactive",
+      sampleRate: 44100,
+    });
+  }
+
+  const source = audioCtx.createMediaStreamSource(stream);
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.minDecibels = -40;
+  source.connect(analyserNode);
+
+  message0 = "Sampling rate: " + audioCtx.sampleRate + " Hz";
+
+  renderFrame();
+}
+
+function ensureBuffers(size) {
+  if (!timeBuffer || timeBuffer.length !== size * 2) {
+    timeBuffer = new Uint8Array(size * 2);
+  }
+  if (!freqBuffer || freqBuffer.length !== size) {
+    freqBuffer = new Float32Array(size);
+  }
+  if (!absBuffer || absBuffer.length !== size) {
+    absBuffer = new Float64Array(size);
+  }
+}
+
+// ============================================================
+// Main Render Loop
+// ============================================================
+
+function renderFrame() {
+  // Read settings from cached DOM refs
+  fftSize = parseInt(dom.sizeFFT.value);
+  analyserNode.fftSize = fftSize;
+  bufferLength = analyserNode.frequencyBinCount;
+  ensureBuffers(bufferLength);
+
+  colormap = dom.colormap.value;
+  fMin = parseFloat(dom.fMin.value);
+  fMax = parseFloat(dom.fMax.value);
+  binWidth = parseInt(dom.speed.value);
+  sensibility = parseFloat(dom.sensibility.value);
+  fNyquist = audioCtx.sampleRate / 2;
+
+  // Acquire audio data
+  analyserNode.getByteTimeDomainData(timeBuffer);
+  analyserNode.getFloatFrequencyData(freqBuffer);
+  counter++;
+
+  // Copy time-domain samples and apply window function
+  const sampleCount = bufferLength * 2;
+  myX = new Array(sampleCount);
+  for (let i = 0; i < sampleCount; i++) myX[i] = timeBuffer[i];
+  applyWindow(myX);
+
+  // Draw waveform
+  plotMic();
+
+  // Compute FFT magnitudes
+  absBuffer.fill(0);
+  maxIntensity = -100;
+  const half = myX.length / 2;
+
+  if (dom.fft.value === "myFFT") {
+    const fft = myFFT(myX);
+    for (let i = 1; i < half; i++) {
+      absBuffer[i] = 10 * Math.log10(fft[i].re * fft[i].re + fft[i].im * fft[i].im) - 20;
+      if (absBuffer[i] > maxIntensity) maxIntensity = absBuffer[i];
+    }
+  } else {
+    // WebAudio FFT — windowing is handled internally by AnalyserNode
+    for (let i = 1; i < half; i++) {
+      absBuffer[i] = freqBuffer[i] + 125;
+      if (absBuffer[i] > maxIntensity) maxIntensity = absBuffer[i];
+    }
+  }
+  myXAbs = absBuffer;
+
+  // Frequency range bin indices
+  iMin = Math.floor((myXAbs.length * fMin) / fNyquist);
+  iMax = Math.floor((myXAbs.length * fMax) / fNyquist);
+
+  // Peak frequency detection
+  let peakVal = -Infinity;
+  let peakIdx = 0;
+  for (let i = 1; i < myXAbs.length; i++) {
+    if (myXAbs[i] > peakVal) {
+      peakVal = myXAbs[i];
+      peakIdx = i;
+    }
+  }
+  frecMax = (peakIdx / myXAbs.length) * fNyquist;
+
+  // Render all visualization layers
+  drawPeakFrequency();
+  yAxisMarks();
+  plotFFT();
+  plotSpectro();
+
+  animationId = requestAnimationFrame(renderFrame);
+}
+
+// ============================================================
+// Window Functions
+// ============================================================
+
+function applyWindow(samples) {
+  const n = samples.length;
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += samples[i];
+  mean /= n;
+
+  const winType = dom.windowFunc.value;
+
+  for (let i = 0; i < n; i++) {
+    const centered = samples[i] - mean;
+    switch (winType) {
+      case "Cosine":
+        samples[i] = centered * Math.sin(Math.PI * i / n);
+        break;
+      case "Hanning":
+        samples[i] = centered * 0.5 * (1 - Math.cos(2 * Math.PI * i / n));
+        break;
+      case "BH7": {
+        let w = 0;
+        for (let j = 0; j < 7; j++) {
+          w += BH7_COEFFS[j] * Math.cos(2 * Math.PI * j * i / n);
+        }
+        samples[i] = centered * w;
+        break;
+      }
+      default:
+        samples[i] = centered;
+    }
+  }
+}
+
+// ============================================================
+// FFT — Cooley-Tukey Radix-2
+// ============================================================
+
+function Complex(re, im) {
+  this.re = re;
+  this.im = im || 0;
+}
+
+function myFFT(signal) {
+  const len = signal.length;
+  if (len === 1) return signal;
+
+  const half = len / 2;
+  const even = new Array(half);
+  const odd = new Array(half);
+
+  for (let i = 0; i < half; i++) {
+    even[i] = signal[i * 2];
+    odd[i] = signal[i * 2 + 1];
+  }
+
+  const evenFFT = myFFT(even);
+  const oddFFT = myFFT(odd);
+
+  for (let k = 0; k < half; k++) {
+    if (!(evenFFT[k] instanceof Complex)) evenFFT[k] = new Complex(evenFFT[k], 0);
+    if (!(oddFFT[k] instanceof Complex)) oddFFT[k] = new Complex(oddFFT[k], 0);
+
+    const angle = -2 * Math.PI * k / len;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const tRe = oddFFT[k].re * cos - oddFFT[k].im * sin;
+    const tIm = oddFFT[k].re * sin + oddFFT[k].im * cos;
+
+    signal[k] = new Complex(evenFFT[k].re + tRe, evenFFT[k].im + tIm);
+    signal[k + half] = new Complex(evenFFT[k].re - tRe, evenFFT[k].im - tIm);
+  }
+
+  return signal;
+}
+
+// ============================================================
+// Drawing Functions
+// ============================================================
+
+function drawPeakFrequency() {
+  ctx.fillStyle = "lightblue";
+  ctx.fillRect(
+    borderTop, borderTop,
+    canvas.width / 10 + borderLeft - 2 * borderTop,
+    canvas.height / 10 - borderTop,
   );
+  ctx.fillStyle = "black";
+  ctx.font = getFont(25);
+  ctx.textAlign = "right";
+  const centerY = (borderTop + canvas.height / 10) / 2;
+  ctx.fillText(Math.round(frecMax) + " Hz", canvas.width / 8, centerY);
+}
+
+function plotMic() {
+  const scaleV = canvas.height / 760;
+  const attenuation = 0.4;
+
+  const x0 = canvas.width / 10 + borderLeft;
+  const areaW = 0.9 * canvas.width - borderRight - borderLeft;
+  const areaH = canvas.height / 10 + borderTop;
+
+  ctx.fillStyle = "#003B5C";
+  ctx.fillRect(x0, 0, areaW, areaH);
+
+  ctx.beginPath();
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1;
+
+  const center = areaH / 2;
+  const dx = areaW / myX.length;
+  let x = x0;
+
+  for (let i = 0; i < myX.length; i++) {
+    if (i === 0) {
+      ctx.moveTo(x, center);
+    } else {
+      let y = myX[i] * attenuation + center;
+      y = center + (y - center) * scaleV;
+      y = Math.min(y, areaH - 1);
+      ctx.lineTo(x, y);
+    }
+    x += dx;
+  }
+  ctx.stroke();
+}
+
+function plotFFT() {
+  const scaleH = canvas.width / 1440;
+  const fftWidth = (0.9 * canvas.width) / 10;
+  const Y0 = canvas.height / 10 + borderTop;
+  const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
+
+  // Cache scale values for the loop
+  const isLinear = dom.scale.value === "Linear";
+  const freqRange = fMax - fMin;
+  const melMin = isLinear ? 0 : melScale(fMin);
+  const melRange = isLinear ? 0 : melScale(fMax) - melMin;
+  const deltaI = iMax - iMin;
+
+  function getY(i) {
+    if (isLinear) {
+      return Y0 + deltaY0 - (deltaY0 * (i - iMin)) / deltaI;
+    }
+    const freq = fMin + (freqRange * (i - iMin)) / deltaI;
+    const mel = melScale(freq);
+    return Y0 + deltaY0 - (deltaY0 * (mel - melMin)) / melRange;
+  }
+
+  // Clear FFT area
+  ctx.fillStyle = "#003B5C";
+  ctx.fillRect(0, Y0, fftWidth, deltaY0);
+
+  ctx.lineWidth = 1;
+
+  // Colored magnitude bars
+  for (let i = iMin; i < iMax; i++) {
+    const y = getY(i);
+    const value = myXAbs[i] / sensibility;
+    ctx.strokeStyle = "hsl(" + (360 * (1 - value)) + ",100%,50%)";
+    ctx.beginPath();
+    ctx.moveTo(fftWidth, y);
+    if (myXAbs[i] > 0) {
+      ctx.lineTo(-myXAbs[i] * scaleH + fftWidth, y);
+    }
+    ctx.stroke();
+  }
+
+  // White envelope
+  ctx.beginPath();
+  ctx.strokeStyle = "white";
+  for (let i = iMin; i < iMax; i++) {
+    const y = getY(i);
+    const x = -myXAbs[i] * scaleH + fftWidth;
+    if (i === iMin) {
+      ctx.moveTo(fftWidth, y);
+    } else if (myXAbs[i] > 0) {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+
+  // Auto-adjust sensibility threshold
+  sensibilityTemp = maxIntensity > sensibility ? maxIntensity : sensibility;
+  colormapMarks();
+  dom.outputSensibility.textContent = Math.floor(sensibilityTemp);
+  dom.sensibility.value = Math.floor(sensibilityTemp);
+
+  // Threshold vertical line
+  ctx.beginPath();
+  ctx.strokeStyle = "white";
+  const threshX = -sensibilityTemp * scaleH + fftWidth;
+  ctx.moveTo(threshX, Y0);
+  ctx.lineTo(threshX, Y0 + deltaY0);
+  ctx.stroke();
+}
+
+function plotSpectro() {
+  const X0 = Math.floor(canvas.width / 10 + borderLeft);
+  const deltaX0 = Math.floor(0.9 * canvas.width - borderLeft - borderRight - binWidth);
+  const Y0 = canvas.height / 10 + borderTop;
+  const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
+
+  const isScrolling = dom.scrolling.checked;
+  const isPaused = dom.stop.checked;
+  const isLinear = dom.scale.value === "Linear";
+
+  const deltaI = iMax - iMin;
+  const deltaF = fMax - fMin;
+  const melMin = isLinear ? 0 : melScale(fMin);
+  const melRange = isLinear ? 0 : melScale(fMax) - melMin;
+
+  // Scroll existing pixels (GPU-accelerated via drawImage)
+  if (!isPaused) {
+    if (isScrolling) {
+      ctx.drawImage(canvas,
+        X0 + binWidth, Y0, deltaX0 - binWidth, deltaY0,
+        X0, Y0, deltaX0 - binWidth, deltaY0,
+      );
+    } else {
+      ctx.drawImage(canvas,
+        X0 + 1, Y0, deltaX0 - binWidth - 1, deltaY0,
+        X0 + binWidth, Y0, deltaX0 - binWidth - 1, deltaY0,
+      );
+    }
+  }
+
+  // Draw new frequency column
+  ctx.lineWidth = 1;
+
+  for (let i = iMin; i < iMax; i++) {
+    let y;
+    if (isLinear) {
+      y = Y0 + deltaY0 - (deltaY0 * (i - iMin)) / deltaI;
+    } else {
+      const freq = fMin + (deltaF * (i - iMin)) / deltaI;
+      const mel = melScale(freq);
+      y = Y0 + deltaY0 - (deltaY0 * (mel - melMin)) / melRange;
+    }
+
+    let value = myXAbs[i] / sensibility;
+    if (value > 1) value = 1;
+
+    const rgb = evaluate_cmap(value, colormap, false);
+    ctx.strokeStyle = "rgb(" + rgb + ")";
+
+    ctx.beginPath();
+    if (isScrolling) {
+      ctx.moveTo(X0 + deltaX0, y);
+      ctx.lineTo(X0 + deltaX0 - binWidth, y);
+    } else {
+      ctx.moveTo(X0, y);
+      ctx.lineTo(X0 + binWidth, y);
+    }
+    ctx.stroke();
+  }
+}
+
+function yAxisMarks() {
+  const X0 = canvas.width / 10 + borderLeft;
+  const Y0 = canvas.height / 10 + borderTop;
+  const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
+
+  // Clear axis label area
+  ctx.fillStyle = "white";
+  ctx.fillRect(
+    (0.9 * canvas.width) / 10,
+    Y0 - borderTop,
+    (0.1 * canvas.width) / 10 + borderLeft,
+    Y0 + deltaY0,
+  );
+
+  ctx.fillStyle = "black";
+  ctx.font = getFont(10);
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+
+  const isLinear = dom.scale.value === "Linear";
+  const ticks = isLinear
+    ? [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500,
+       6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000,
+       13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000]
+    : [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000, 6000, 7000,
+       8000, 9000, 10000, 11000, 13000, 15000, 17000, 20000];
+
+  const freqRange = fMax - fMin;
+  const melMin = isLinear ? 0 : melScale(fMin);
+  const melRange = isLinear ? 0 : melScale(fMax) - melMin;
+
+  for (const freq of ticks) {
+    if (freq > fMax) continue;
+
+    let y;
+    if (isLinear) {
+      y = Y0 + deltaY0 - (deltaY0 * (freq - fMin)) / freqRange;
+    } else {
+      const mel = melScale(freq);
+      y = Y0 + deltaY0 - (deltaY0 * (mel - melMin)) / melRange;
+    }
+
+    ctx.fillText(freq + " Hz", X0 - borderTop, y);
+
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.moveTo(X0, y);
+    ctx.lineTo(X0 - 4, y);
+    ctx.moveTo((0.9 * canvas.width) / 10, y);
+    ctx.lineTo((0.9 * canvas.width) / 10 + 4, y);
+    ctx.stroke();
+  }
+}
+
+function plotColormap() {
+  const cmapName = dom.colormap.value;
+  const Y0 = Math.floor(canvas.height / 10 + borderTop);
+  const deltaY0 = Math.floor(0.9 * canvas.height - borderBottom - borderTop);
+  const x0 = Math.floor(0.9 * canvas.width + borderTop);
+  const barW = canvas.width / 30;
 
   for (let y = Y0; y <= Y0 + deltaY0; y++) {
-    var myrgb = evaluate_cmap(1 - (y - Y0) / deltaY0, colormap, false);
-    canvasCtx.fillStyle = "rgb(" + myrgb + ")";
-    let x0 = Math.floor(0.9 * canvas.width + border_canvas_plot_top);
-    canvasCtx.fillRect(x0, y, canvas.width / 30, 1);
+    const rgb = evaluate_cmap(1 - (y - Y0) / deltaY0, cmapName, false);
+    ctx.fillStyle = "rgb(" + rgb + ")";
+    ctx.fillRect(x0, y, barW, 1);
   }
 }
 
-function SetDefaultWindow() {
-  if (document.getElementById("FFT").value == "WebAudio") {
-    const aa = document.getElementById("window");
-    aa.value = "None";
-  } else if (document.getElementById("FFT").value == "myFFT") {
-    const aa = document.getElementById("window");
-    aa.value = "BH7";
+function colormapMarks() {
+  const x0 = 0.95 * canvas.width;
+  const Y0 = canvas.height / 10 + borderTop;
+  const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
+
+  // Clear label areas
+  ctx.fillStyle = "white";
+  ctx.fillRect(x0, 0, canvas.width - x0, Y0 + deltaY0 + 10);
+  ctx.fillRect(0, canvas.height - 0.8 * borderBottom, canvas.width, 0.8 * borderBottom + 10);
+
+  ctx.fillStyle = "black";
+  ctx.font = getFont(20);
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+
+  const dB = Math.max(sensibilityTemp, maxIntensity);
+  ctx.fillText(Math.floor(dB) + " dB", x0, Y0);
+  ctx.fillText(Math.floor(0.75 * dB) + " dB", x0, Y0 + 0.25 * deltaY0);
+  ctx.fillText(Math.floor(0.5 * dB) + " dB", x0, Y0 + 0.5 * deltaY0);
+  ctx.fillText(Math.floor(0.25 * dB) + " dB", x0, Y0 + 0.75 * deltaY0);
+  ctx.fillText("0 dB", x0, Y0 + deltaY0);
+
+  ctx.fillText("Time", canvas.width / 2, canvas.height - 0.5 * borderBottom);
+  ctx.fillText("Loudness (dB)", 10, canvas.height - 0.5 * borderBottom);
+  ctx.fillText("Color", canvas.width - borderRight, canvas.height - 0.5 * borderBottom);
+}
+
+// ============================================================
+// UI: Settings Panel, Info Modal, Screenshot, Fullscreen
+// ============================================================
+
+function toggleSettings() {
+  dom.settingsPanel.classList.toggle("hidden");
+}
+
+function showInfo() {
+  dom.infoText.textContent = [
+    message0,
+    "Screen: " + screen.width + "x" + screen.height,
+    "Window: " + window.innerWidth + "x" + window.innerHeight,
+    "Canvas: " + canvas.width + "x" + canvas.height,
+    "FFT size: " + fftSize,
+    "Bins: " + bufferLength,
+  ].join("\n");
+  dom.infoModal.classList.remove("hidden");
+}
+
+function hideInfo() {
+  dom.infoModal.classList.add("hidden");
+}
+
+function takeScreenshot() {
+  canvas.toBlob(function (blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "spectrogram_" + new Date().toISOString().slice(0, 19).replace(/:/g, "-") + ".png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, "image/png");
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(function () {});
+  } else {
+    document.exitFullscreen();
   }
-  console.log("jj");
 }
 
-function ColormapMarks() {
-  canvasCtx.fillStyle = "white";
-  let x0 = 0.95 * canvas.width;
-  let Y0 = canvas.height / 10 + border_canvas_plot_top;
-  var deltaY0 =
-    0.9 * canvas.height - border_canvas_plot_bottom - border_canvas_plot_top;
-  canvasCtx.fillRect(x0, 0, canvas.width - x0, Y0 + deltaY0 + 10);
-  canvasCtx.fillRect(
-    0,
-    canvas.height - 0.8 * border_canvas_plot_bottom,
-    canvas.width,
-    0.8 * border_canvas_plot_bottom + 10,
-  );
-
-  canvasCtx.fillStyle = "black";
-  canvasCtx.font = getFont(20);
-
-  canvasCtx.textBaseline = "middle";
-  var dB = Math.max(sensibility_temp, max_intensity);
-  canvasCtx.textAlign = "left";
-  canvasCtx.fillText(Math.floor(dB) + " dB", x0, Y0);
-  canvasCtx.fillText(Math.floor(0.75 * dB) + " dB", x0, Y0 + 0.25 * deltaY0);
-  canvasCtx.fillText(Math.floor(0.5 * dB) + " dB", x0, Y0 + 0.5 * deltaY0);
-  canvasCtx.fillText(Math.floor(0.25 * dB) + " dB", x0, Y0 + 0.75 * deltaY0);
-  canvasCtx.fillText(0 + " dB", x0, Y0 + deltaY0);
-
-  canvasCtx.textAlign = "left";
-  canvasCtx.fillText(
-    "Time",
-    canvas.width / 2,
-    canvas.height - 0.5 * border_canvas_plot_bottom,
-  );
-  canvasCtx.fillText(
-    "Loudness (dB)",
-    10,
-    canvas.height - 0.5 * border_canvas_plot_bottom,
-  );
-  canvasCtx.fillText(
-    "Color",
-    canvas.width - border_canvas_plot_right,
-    canvas.height - 0.5 * border_canvas_plot_bottom,
-  );
+function setDefaultWindow() {
+  dom.windowFunc.value = dom.fft.value === "WebAudio" ? "None" : "BH7";
 }
 
-function getFont(s) {
-  var fontBase = 1000;
-  var ratio = s / fontBase;
-  var size = canvas.width * ratio;
-  return (size | 0) + "px sans-serif";
-}
+// ============================================================
+// Event Listeners
+// ============================================================
+
+// Settings panel
+dom.settingsToggle.addEventListener("click", toggleSettings);
+dom.settingsClose.addEventListener("click", toggleSettings);
+
+// Action buttons
+dom.fullscreenBtn.addEventListener("click", toggleFullscreen);
+dom.screenshotBtn.addEventListener("click", takeScreenshot);
+dom.infoBtn.addEventListener("click", showInfo);
+dom.infoModal.querySelector(".modal-close").addEventListener("click", hideInfo);
+dom.infoModal.addEventListener("click", function (e) {
+  if (e.target === dom.infoModal) hideInfo();
+});
+
+// FFT engine change -> set default window function
+dom.fft.addEventListener("change", setDefaultWindow);
+
+// Microphone selection
+dom.microphone.addEventListener("change", function () {
+  selectAndStartMic(this.value);
+});
+
+// Colormap change -> redraw colormap bar
+dom.colormap.addEventListener("change", plotColormap);
+
+// Sensibility slider -> update display
+dom.sensibility.addEventListener("input", function () {
+  dom.outputSensibility.textContent = this.value;
+});
+
+// Persist settings on any control change
+dom.settingsPanel.addEventListener("change", saveSettings);
+dom.settingsPanel.addEventListener("input", saveSettings);
+
+// Canvas interactions — pause toggle
+canvas.addEventListener("mousedown", function (e) {
+  if (e.target.type !== "checkbox" && e.target.type !== "range") {
+    togglePause();
+  }
+});
+
+// Touch events
+let touchStartTime = 0;
+canvas.addEventListener("touchstart", function (e) {
+  touchStartTime = Date.now();
+});
+canvas.addEventListener("touchend", function () {
+  if (Date.now() - touchStartTime > 250) {
+    togglePause();
+  }
+});
+
+// Resume AudioContext on user gesture (Chrome autoplay policy)
+document.addEventListener("click", function () {
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+});
+
+// Keyboard shortcuts
+document.addEventListener("keydown", function (e) {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  switch (e.key) {
+    case " ":
+      e.preventDefault();
+      togglePause();
+      break;
+    case "s":
+      takeScreenshot();
+      break;
+    case "f":
+      toggleFullscreen();
+      break;
+    case "Escape":
+      if (!dom.settingsPanel.classList.contains("hidden")) toggleSettings();
+      if (!dom.infoModal.classList.contains("hidden")) hideInfo();
+      break;
+  }
+});
+
+// Resize
+window.addEventListener("resize", applyOrientation);
+
+// ============================================================
+// Initialize
+// ============================================================
+
+applyOrientation();
+populateColormaps();
+loadSettings();
+applyOrientation(); // Re-render colormap with loaded setting
+initMicrophones();
