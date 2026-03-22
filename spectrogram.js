@@ -43,6 +43,8 @@ const dom = {
   infoModal:         document.getElementById("info-modal"),
   infoText:          document.getElementById("info-text"),
   status:            document.getElementById("status"),
+  // Level display mode
+  dbMode:            document.getElementById("db-mode"),
   // Audiogram controls
   audiogramEnable:   document.getElementById("audiogram-enable"),
   audiogramPreset:   document.getElementById("audiogram-preset"),
@@ -194,6 +196,7 @@ function saveSettings() {
       scrolling: dom.scrolling.checked,
       windowFunc: dom.windowFunc.value,
       fft: dom.fft.value,
+      dbMode: dom.dbMode.value,
     }));
   } catch (_) { /* storage unavailable */ }
   audiogram.save();
@@ -214,6 +217,7 @@ function loadSettings() {
     if (s.scrolling !== undefined) dom.scrolling.checked = s.scrolling;
     if (s.windowFunc) dom.windowFunc.value = s.windowFunc;
     if (s.fft) dom.fft.value = s.fft;
+    if (s.dbMode) dom.dbMode.value = s.dbMode;
     dom.outputSensibility.textContent = dom.sensibility.value;
   } catch (_) { /* ignore */ }
 }
@@ -603,6 +607,7 @@ function plotFFT() {
   const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
 
   const isLinear = dom.scale.value === "Linear";
+  const isHLMode = dom.dbMode.value === "HL";
   const freqRange = fMax - fMin;
   const melMin = isLinear ? 0 : melScale(fMin);
   const melRange = isLinear ? 0 : melScale(fMax) - melMin;
@@ -617,6 +622,13 @@ function plotFFT() {
     return Y0 + deltaY0 - (deltaY0 * (mel - melMin)) / melRange;
   }
 
+  // Get corrected dB value for a bin
+  function getCorrectedDB(i) {
+    if (!isHLMode) return myXAbs[i];
+    const freq = fMin + (freqRange * (i - iMin)) / deltaI;
+    return myXAbs[i] - getRETSPL(freq);
+  }
+
   ctx.fillStyle = "#003B5C";
   ctx.fillRect(0, Y0, fftWidth, deltaY0);
 
@@ -624,12 +636,13 @@ function plotFFT() {
 
   for (let i = iMin; i < iMax; i++) {
     const y = getY(i);
-    const value = myXAbs[i] / sensibility;
+    const db = getCorrectedDB(i);
+    const value = db / sensibility;
     ctx.strokeStyle = "hsl(" + (360 * (1 - value)) + ",100%,50%)";
     ctx.beginPath();
     ctx.moveTo(fftWidth, y);
-    if (myXAbs[i] > 0) {
-      ctx.lineTo(-myXAbs[i] * scaleH + fftWidth, y);
+    if (db > 0) {
+      ctx.lineTo(-db * scaleH + fftWidth, y);
     }
     ctx.stroke();
   }
@@ -638,10 +651,11 @@ function plotFFT() {
   ctx.strokeStyle = "white";
   for (let i = iMin; i < iMax; i++) {
     const y = getY(i);
-    const x = -myXAbs[i] * scaleH + fftWidth;
+    const db = getCorrectedDB(i);
+    const x = -db * scaleH + fftWidth;
     if (i === iMin) {
       ctx.moveTo(fftWidth, y);
-    } else if (myXAbs[i] > 0) {
+    } else if (db > 0) {
       ctx.lineTo(x, y);
     }
   }
@@ -669,6 +683,7 @@ function plotSpectro() {
   const isScrolling = dom.scrolling.checked;
   const isPaused = dom.stop.checked;
   const isLinear = dom.scale.value === "Linear";
+  const isHLMode = dom.dbMode.value === "HL";
   const audiogramEnabled = audiogram.enabled && dom.audiogramEnable.checked;
 
   const deltaI = iMax - iMin;
@@ -711,7 +726,11 @@ function plotSpectro() {
     const binIdx = Math.round((freq / fNyquist) * myXAbs.length);
     if (binIdx < 1 || binIdx >= myXAbs.length) continue;
 
-    let value = myXAbs[binIdx] / sensibility;
+    // Apply RETSPL correction for dB HL mode
+    const rawDB = myXAbs[binIdx];
+    const correctedDB = isHLMode ? rawDB - getRETSPL(freq) : rawDB;
+
+    let value = correctedDB / sensibility;
     if (value > 1) value = 1;
     if (value < 0) value = 0;
 
@@ -720,8 +739,7 @@ function plotSpectro() {
 
     // Audiogram masking: dim pixels below patient's hearing threshold
     if (audiogramEnabled && value > 0.01) {
-      const dBSPL = myXAbs[binIdx];
-      if (!audiogram.isAudible(dBSPL, freq)) {
+      if (!audiogram.isAudible(correctedDB, freq, isHLMode)) {
         r = Math.floor(r * 0.2 + 80);
         g = Math.floor(g * 0.1);
         b = Math.floor(b * 0.1);
@@ -822,11 +840,12 @@ function colormapMarks() {
   ctx.textAlign = "left";
 
   const dB = Math.max(sensibilityTemp, maxIntensity);
-  ctx.fillText(Math.floor(dB) + " dB", x0, Y0);
-  ctx.fillText(Math.floor(0.75 * dB) + " dB", x0, Y0 + 0.25 * deltaY0);
-  ctx.fillText(Math.floor(0.5 * dB) + " dB", x0, Y0 + 0.5 * deltaY0);
-  ctx.fillText(Math.floor(0.25 * dB) + " dB", x0, Y0 + 0.75 * deltaY0);
-  ctx.fillText("0 dB", x0, Y0 + deltaY0);
+  const unit = dom.dbMode.value === "HL" ? " dB HL" : " dB SPL";
+  ctx.fillText(Math.floor(dB) + unit, x0, Y0);
+  ctx.fillText(Math.floor(0.75 * dB) + unit, x0, Y0 + 0.25 * deltaY0);
+  ctx.fillText(Math.floor(0.5 * dB) + unit, x0, Y0 + 0.5 * deltaY0);
+  ctx.fillText(Math.floor(0.25 * dB) + unit, x0, Y0 + 0.75 * deltaY0);
+  ctx.fillText("0" + unit, x0, Y0 + deltaY0);
 
   // Elapsed time instead of static "Time"
   const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
@@ -835,7 +854,8 @@ function colormapMarks() {
   const timeStr = mins + ":" + (secs < 10 ? "0" : "") + secs;
   ctx.fillText(timeStr, canvas.width / 2, canvas.height - 0.5 * borderBottom);
 
-  ctx.fillText("Loudness (dB)", 10, canvas.height - 0.5 * borderBottom);
+  const loudnessLabel = dom.dbMode.value === "HL" ? "Loudness (dB HL)" : "Loudness (dB SPL)";
+  ctx.fillText(loudnessLabel, 10, canvas.height - 0.5 * borderBottom);
   ctx.fillText("Color", canvas.width - borderRight, canvas.height - 0.5 * borderBottom);
 }
 
@@ -1179,6 +1199,7 @@ function showInfo() {
     "Canvas: " + canvas.width + "x" + canvas.height,
     "FFT size: " + fftSize,
     "Bins: " + bufferLength,
+    "Level display: " + (dom.dbMode.value === "HL" ? "dB HL (Hearing Level)" : "dB SPL (Sound Pressure)"),
     "Elapsed: " + Math.floor(elapsed / 60) + "m " + (elapsed % 60) + "s",
     "Audiogram: " + (audiogram.enabled ? "ON" : "OFF"),
     audiogram.enabled
@@ -1265,6 +1286,11 @@ dom.scale.addEventListener("change", function () {
 // Sensibility slider -> update display
 dom.sensibility.addEventListener("input", function () {
   dom.outputSensibility.textContent = this.value;
+});
+
+// dB mode change -> redraw overlay (audiogram annotations reference dB units)
+dom.dbMode.addEventListener("change", function () {
+  overlayDirty = true;
 });
 
 // Persist settings on any control change

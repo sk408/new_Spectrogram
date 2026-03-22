@@ -76,6 +76,46 @@ const FREQ_BAND_LABELS = {
   8000: "sibilants, detail",
 };
 
+// Reference Equivalent Threshold Sound Pressure Levels (ISO 389-7)
+// Free-field, frontal incidence, binaural listening (MAF)
+// Used to convert between dB SPL and dB HL: dB_HL = dB_SPL - RETSPL(freq)
+const RETSPL_TABLE = Object.freeze([
+  { freq: 20,    dB: 78.5 },
+  { freq: 50,    dB: 44.0 },
+  { freq: 100,   dB: 26.5 },
+  { freq: 125,   dB: 22.1 },
+  { freq: 250,   dB: 11.4 },
+  { freq: 500,   dB: 4.4  },
+  { freq: 1000,  dB: 2.4  },
+  { freq: 1500,  dB: 1.7  },
+  { freq: 2000,  dB: -1.3 },
+  { freq: 3000,  dB: -6.0 },
+  { freq: 4000,  dB: -5.4 },
+  { freq: 6000,  dB: 4.3  },
+  { freq: 8000,  dB: 12.4 },
+  { freq: 10000, dB: 13.3 },
+  { freq: 16000, dB: 46.0 },
+  { freq: 20000, dB: 78.5 },
+]);
+
+// Interpolate RETSPL correction for any frequency (log-frequency interpolation)
+function getRETSPL(freq) {
+  const table = RETSPL_TABLE;
+  if (freq <= table[0].freq) return table[0].dB;
+  if (freq >= table[table.length - 1].freq) return table[table.length - 1].dB;
+
+  for (let i = 0; i < table.length - 1; i++) {
+    if (freq >= table[i].freq && freq <= table[i + 1].freq) {
+      const logF  = Math.log(freq);
+      const logF0 = Math.log(table[i].freq);
+      const logF1 = Math.log(table[i + 1].freq);
+      const t = (logF - logF0) / (logF1 - logF0);
+      return table[i].dB + t * (table[i + 1].dB - table[i].dB);
+    }
+  }
+  return 0;
+}
+
 // Audiogram state
 const audiogram = {
   enabled: false,
@@ -115,14 +155,11 @@ const audiogram = {
     return Math.max(l, r);
   },
 
-  // Convert threshold to a 0-1 fraction of spectrogram dB range
-  // dBSPL is the sound level of a spectrogram pixel
-  // Returns true if the sound is ABOVE the patient's threshold (audible)
-  isAudible(dBSPL, freq) {
-    // Map spectrogram dB to approximate dB HL
-    // Spectrogram dB are relative; hearing thresholds are in dB HL
-    // Using a simple mapping: ~20 dB SPL ≈ 0 dB HL for speech frequencies
-    const dBHL = dBSPL - 20;
+  // Returns true if the sound at the given level is above the patient's threshold
+  // rawDB: raw FFT dB value, freq: Hz, isHLMode: whether display is in dB HL
+  isAudible(rawDB, freq, isHLMode) {
+    // Convert raw dB to approximate dB HL using RETSPL correction
+    const dBHL = isHLMode ? rawDB : (rawDB - getRETSPL(freq));
     const threshold = this.ear === "both"
       ? this.getWorstThreshold(freq)
       : this.getThreshold(freq);
