@@ -908,8 +908,7 @@ window.addEventListener("resize", applyOrientation);
 // Initialize
 // ============================================================
 
-applyOrientation();
 populateColormaps();
 loadSettings();
-applyOrientation(); // Re-render colormap with loaded setting
+applyOrientation();
 initMicrophones();
