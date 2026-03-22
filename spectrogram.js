@@ -12,6 +12,13 @@ const BH7_COEFFS = Object.freeze([
   0.00001388721735,
 ]);
 
+// Approximate dBFS → dB SPL offset. Web Audio getFloatFrequencyData() returns
+// dBFS (0 = digital max, typically -100 to -10). Adding this offset maps to
+// approximate dB SPL. Not calibrated — true SPL requires a reference microphone.
+// Combined with RETSPL correction (audiogram.js), gives approximate dB HL:
+//   dB HL ≈ dBFS + DBFS_SPL_OFFSET - RETSPL(freq)
+const DBFS_SPL_OFFSET = 125;
+
 // --- Canvas ---
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -396,7 +403,7 @@ function renderFrame() {
     }
   } else {
     for (let i = 1; i < half; i++) {
-      absBuffer[i] = freqBuffer[i] + 125;
+      absBuffer[i] = freqBuffer[i] + DBFS_SPL_OFFSET;
       if (absBuffer[i] > maxIntensity) maxIntensity = absBuffer[i];
     }
   }
