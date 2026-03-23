@@ -696,8 +696,12 @@ function plotFFT() {
 }
 
 function plotSpectro() {
+  // Scale column width to canvas width so speed feels the same on any screen size.
+  // 400 px is the reference (typical mobile portrait width).
+  const scaledBinWidth = Math.max(1, Math.round(binWidth * canvas.width / 400));
+
   const X0 = Math.floor(canvas.width / 10 + borderLeft);
-  const deltaX0 = Math.floor(0.9 * canvas.width - borderLeft - borderRight - binWidth);
+  const deltaX0 = Math.floor(0.9 * canvas.width - borderLeft - borderRight - scaledBinWidth);
   const Y0 = canvas.height / 10 + borderTop;
   const deltaY0 = 0.9 * canvas.height - borderBottom - borderTop;
 
@@ -716,21 +720,21 @@ function plotSpectro() {
   if (!isPaused) {
     if (isScrolling) {
       ctx.drawImage(canvas,
-        X0 + binWidth, Y0, deltaX0 - binWidth, deltaY0,
-        X0, Y0, deltaX0 - binWidth, deltaY0,
+        X0 + scaledBinWidth, Y0, deltaX0 - scaledBinWidth, deltaY0,
+        X0, Y0, deltaX0 - scaledBinWidth, deltaY0,
       );
     } else {
       ctx.drawImage(canvas,
-        X0 + 1, Y0, deltaX0 - binWidth - 1, deltaY0,
-        X0 + binWidth, Y0, deltaX0 - binWidth - 1, deltaY0,
+        X0 + 1, Y0, deltaX0 - scaledBinWidth - 1, deltaY0,
+        X0 + scaledBinWidth, Y0, deltaX0 - scaledBinWidth - 1, deltaY0,
       );
     }
   }
 
   // Draw new frequency column using ImageData — iterate pixel rows to avoid gaps
-  const colX = isScrolling ? X0 + deltaX0 - binWidth : X0;
+  const colX = isScrolling ? X0 + deltaX0 - scaledBinWidth : X0;
   const height = Math.ceil(deltaY0);
-  const imgData = ctx.createImageData(binWidth, height);
+  const imgData = ctx.createImageData(scaledBinWidth, height);
   const pixels = imgData.data;
 
   for (let row = 0; row < height; row++) {
@@ -767,8 +771,8 @@ function plotSpectro() {
       }
     }
 
-    for (let bx = 0; bx < binWidth; bx++) {
-      const idx = (row * binWidth + bx) * 4;
+    for (let bx = 0; bx < scaledBinWidth; bx++) {
+      const idx = (row * scaledBinWidth + bx) * 4;
       pixels[idx] = r;
       pixels[idx + 1] = g;
       pixels[idx + 2] = b;
