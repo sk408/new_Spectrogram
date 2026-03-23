@@ -1,211 +1,210 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <title>Spectrogram — Hearing Counseling Tool</title>
-    <link rel="stylesheet" href="spectrogram.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hearing Loss Simulator</title>
+  <link rel="stylesheet" href="spectrogram.css">
 </head>
+<body class="hls-app">
 
-<body>
-    <div id="canvas-container">
-        <canvas id="canvas"></canvas>
-        <canvas id="canvas-overlay"></canvas>
+  <header class="hls-header">
+    <div class="hls-header__title">Hearing Loss Simulator</div>
+    <nav class="hls-tabs" role="tablist">
+      <button class="hls-tab hls-tab--active" data-tab="live" role="tab" aria-selected="true">
+        <span class="hls-tab__icon">🎙</span>
+        <span class="hls-tab__label">Live Mic</span>
+      </button>
+      <button class="hls-tab" data-tab="record" role="tab" aria-selected="false">
+        <span class="hls-tab__icon">⏺</span>
+        <span class="hls-tab__label">Record &amp; Compare</span>
+      </button>
+      <button class="hls-tab" data-tab="upload" role="tab" aria-selected="false">
+        <span class="hls-tab__icon">📁</span>
+        <span class="hls-tab__label">Upload File</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="hls-main">
+
+    <aside class="hls-sidebar" id="hls-sidebar">
+      <div class="hls-sidebar__section">
+        <label class="hls-label" for="preset-select">Hearing Loss Type</label>
+        <select class="hls-select" id="preset-select">
+          <option value="normal">Normal Hearing</option>
+          <option value="mild_high_freq">Mild High-Frequency</option>
+          <option value="moderate_sloping">Moderate Sloping</option>
+          <option value="severe_high_freq">Severe High-Frequency</option>
+          <option value="presbycusis" selected>Presbycusis (Age-Related)</option>
+          <option value="cookie_bite">Cookie-Bite</option>
+          <option value="noise_induced">Noise-Induced</option>
+          <option value="flat_moderate">Flat Moderate</option>
+          <option value="custom">Custom...</option>
+        </select>
+      </div>
+
+      <div class="hls-sidebar__section">
+        <label class="hls-label">Ear</label>
+        <div class="hls-radio-group" id="ear-selector">
+          <label class="hls-radio"><input type="radio" name="ear" value="both" checked> Both (worst)</label>
+          <label class="hls-radio"><input type="radio" name="ear" value="left"> Left</label>
+          <label class="hls-radio"><input type="radio" name="ear" value="right"> Right</label>
+        </div>
+      </div>
+
+      <div class="hls-sidebar__section" id="threshold-grid-section">
+        <label class="hls-label">Thresholds (dB HL)</label>
+        <div class="hls-threshold-grid" id="threshold-grid">
+          <div class="hls-threshold-grid__header">
+            <span></span>
+            <span>L</span>
+            <span>R</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hls-severity-badge" id="severity-badge">Mild</div>
+
+      <div class="hls-sidebar__section">
+        <label class="hls-toggle-row">
+          <input type="checkbox" id="show-banana" checked>
+          <span>Speech banana</span>
+        </label>
+        <label class="hls-toggle-row">
+          <input type="checkbox" id="show-phonemes" checked>
+          <span>Phoneme markers</span>
+        </label>
+      </div>
+
+      <details class="hls-advanced">
+        <summary>Advanced</summary>
+        <div class="hls-sidebar__section">
+          <label class="hls-label" for="freq-min">Min Freq (Hz)</label>
+          <input class="hls-input" type="number" id="freq-min" value="100" min="20" max="500">
+        </div>
+        <div class="hls-sidebar__section">
+          <label class="hls-label" for="freq-max">Max Freq (Hz)</label>
+          <input class="hls-input" type="number" id="freq-max" value="8000" min="1000" max="20000">
+        </div>
+        <div class="hls-sidebar__section">
+          <label class="hls-label" for="sensitivity">Sensitivity</label>
+          <input class="hls-range" type="range" id="sensitivity" min="-30" max="30" value="0">
+        </div>
+        <div class="hls-sidebar__section">
+          <label class="hls-label" for="mic-select">Microphone</label>
+          <select class="hls-select" id="mic-select"></select>
+        </div>
+      </details>
+    </aside>
+
+    <div class="hls-content" id="hls-content">
+
+      <section class="hls-tab-panel hls-tab-panel--active" data-tab="live" id="panel-live">
+        <div class="hls-panel hls-panel--full" id="panel-live-normal">
+          <div class="hls-panel__label">Live Spectrogram</div>
+          <canvas class="hls-canvas" id="canvas-live"></canvas>
+        </div>
+      </section>
+
+      <section class="hls-tab-panel" data-tab="record" id="panel-record">
+
+        <div class="hls-compare-panels" id="compare-panels">
+          <div class="hls-panel" id="panel-normal">
+            <div class="hls-panel__label">Normal Hearing</div>
+            <canvas class="hls-canvas" id="canvas-normal"></canvas>
+          </div>
+          <div class="hls-panel" id="panel-loss">
+            <div class="hls-panel__label">With Hearing Loss</div>
+            <canvas class="hls-canvas" id="canvas-loss"></canvas>
+          </div>
+          <div class="hls-panel" id="panel-diff">
+            <div class="hls-panel__label">What's Lost</div>
+            <canvas class="hls-canvas" id="canvas-diff"></canvas>
+          </div>
+        </div>
+
+        <div class="hls-recording-overlay hls-hidden" id="recording-overlay">
+          <div class="hls-recording-overlay__timer" id="rec-timer">0:00</div>
+          <canvas class="hls-canvas hls-canvas--waveform" id="canvas-waveform"></canvas>
+          <button class="hls-btn hls-btn--stop-rec" id="btn-stop-rec">&#9632; Stop Recording</button>
+        </div>
+
+        <div class="hls-playback-controls" id="playback-controls">
+          <button class="hls-btn hls-btn--record" id="btn-record">&#9210; Record</button>
+          <button class="hls-btn hls-btn--play" id="btn-play-normal" disabled>&#9654; Play Normal</button>
+          <button class="hls-btn hls-btn--play-loss" id="btn-play-loss" disabled>&#9654; Play With Loss</button>
+          <button class="hls-btn hls-btn--stop" id="btn-stop" disabled>&#9632; Stop</button>
+        </div>
+
+        <div class="hls-wizard" id="hls-wizard">
+
+          <div class="hls-wizard__step" data-step="1">
+            <div class="hls-wizard__progress">Step 1 of 4</div>
+            <h2 class="hls-wizard__title">Pick Hearing Loss Type</h2>
+            <div class="hls-preset-cards" id="wizard-preset-cards"></div>
+            <div class="hls-wizard__custom-grid hls-hidden" id="wizard-custom-grid"></div>
+            <button class="hls-btn hls-btn--next" id="wizard-next-1">Next &#8594;</button>
+          </div>
+
+          <div class="hls-wizard__step hls-hidden" data-step="2">
+            <div class="hls-wizard__progress">Step 2 of 4</div>
+            <div class="hls-wizard__handoff-icon">🤝</div>
+            <h2 class="hls-wizard__title">Hand to Your Partner</h2>
+            <p class="hls-wizard__subtitle">Ask them to record a short message for you.</p>
+            <button class="hls-btn hls-btn--next" id="wizard-next-2">Ready &#8594;</button>
+          </div>
+
+          <div class="hls-wizard__step hls-hidden" data-step="3">
+            <div class="hls-wizard__progress">Step 3 of 4</div>
+            <h2 class="hls-wizard__title">Record a Message</h2>
+            <p class="hls-wizard__subtitle">Say something like <em>"I love you"</em> or <em>"How was your day?"</em></p>
+            <button class="hls-btn hls-btn--big-rec" id="wizard-rec-btn" aria-label="Start recording">
+              <span class="hls-rec-dot"></span>
+            </button>
+            <div class="hls-wizard__rec-timer hls-hidden" id="wizard-rec-timer">0:00</div>
+            <canvas class="hls-canvas hls-canvas--waveform-sm" id="canvas-wizard-waveform"></canvas>
+            <button class="hls-btn hls-btn--rerecord hls-hidden" id="wizard-rerecord">&#8635; Re-record</button>
+            <button class="hls-btn hls-btn--next hls-hidden" id="wizard-next-3">Next &#8594;</button>
+          </div>
+
+          <div class="hls-wizard__step hls-hidden" data-step="4">
+            <div class="hls-wizard__progress">Step 4 of 4</div>
+            <div class="hls-ab-label" id="wizard-ab-label">Playing: Normal</div>
+            <canvas class="hls-canvas hls-canvas--full-mobile" id="canvas-wizard-compare"></canvas>
+            <div class="hls-wizard__playback-btns">
+              <button class="hls-btn hls-btn--play" id="wizard-play-normal">&#9654; Play Normal</button>
+              <button class="hls-btn hls-btn--play-loss" id="wizard-play-loss">&#9654; Play With Loss</button>
+            </div>
+            <div class="hls-wizard__footer">
+              <a class="hls-link" id="wizard-rerecord-link">&#8635; Record again</a>
+              <button class="hls-btn hls-btn--done" id="wizard-done">&#8594; Done</button>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <section class="hls-tab-panel" data-tab="upload" id="panel-upload">
+        <div class="hls-upload-zone" id="upload-zone">
+          <div class="hls-upload-zone__icon">📁</div>
+          <div class="hls-upload-zone__text">Drop an audio file here<br><small>MP3, WAV, M4A, OGG</small></div>
+          <input type="file" id="upload-input" accept="audio/*" class="hls-hidden">
+          <button class="hls-btn" id="btn-upload-pick">Choose File</button>
+        </div>
+      </section>
+
     </div>
 
-    <div id="status"></div>
+  </main>
 
-    <button id="presentation-btn" title="Presentation Mode (P)">&#9654;</button>
-    <button id="fullscreen-btn" title="Fullscreen (F)">&#x26F6;</button>
-    <button id="settings-toggle" title="Settings (Esc)">&#9881;</button>
-
-    <div id="settings-panel" class="hidden">
-        <div class="panel-header">
-            <h2>Settings</h2>
-            <button id="settings-close" title="Close">&times;</button>
-        </div>
-
-        <fieldset>
-            <legend>Audiogram</legend>
-            <div class="control-row">
-                <label for="audiogram-enable">Enable Overlay</label>
-                <input type="checkbox" id="audiogram-enable">
-            </div>
-            <div class="control-row">
-                <label for="audiogram-preset">Preset</label>
-                <select id="audiogram-preset">
-                    <option value="normal">Normal Hearing</option>
-                    <option value="mild_high_freq">Mild High-Freq Loss</option>
-                    <option value="moderate_sloping">Moderate Sloping</option>
-                    <option value="severe_high_freq">Severe High-Freq Loss</option>
-                    <option value="presbycusis" selected>Presbycusis (Age)</option>
-                    <option value="cookie_bite">Cookie Bite</option>
-                    <option value="noise_induced">Noise-Induced</option>
-                    <option value="flat_moderate">Flat Moderate</option>
-                </select>
-            </div>
-            <div class="control-row">
-                <label for="audiogram-ear">Ear</label>
-                <select id="audiogram-ear">
-                    <option value="both" selected>Both (worst)</option>
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                </select>
-            </div>
-            <div id="audiogram-grid">
-                <div class="grid-header">
-                    <span></span>
-                    <span>250</span><span>500</span><span>1k</span>
-                    <span>2k</span><span>4k</span><span>8k</span>
-                </div>
-                <div class="grid-row" data-ear="left">
-                    <span class="ear-label">L</span>
-                    <input type="number" min="-10" max="120" step="5" data-freq="0">
-                    <input type="number" min="-10" max="120" step="5" data-freq="1">
-                    <input type="number" min="-10" max="120" step="5" data-freq="2">
-                    <input type="number" min="-10" max="120" step="5" data-freq="3">
-                    <input type="number" min="-10" max="120" step="5" data-freq="4">
-                    <input type="number" min="-10" max="120" step="5" data-freq="5">
-                </div>
-                <div class="grid-row" data-ear="right">
-                    <span class="ear-label">R</span>
-                    <input type="number" min="-10" max="120" step="5" data-freq="0">
-                    <input type="number" min="-10" max="120" step="5" data-freq="1">
-                    <input type="number" min="-10" max="120" step="5" data-freq="2">
-                    <input type="number" min="-10" max="120" step="5" data-freq="3">
-                    <input type="number" min="-10" max="120" step="5" data-freq="4">
-                    <input type="number" min="-10" max="120" step="5" data-freq="5">
-                </div>
-            </div>
-            <div class="control-row">
-                <label for="show-phonemes">Speech Banana</label>
-                <input type="checkbox" id="show-phonemes" checked>
-            </div>
-        </fieldset>
-
-        <fieldset>
-            <legend>Appearance</legend>
-            <div class="control-row">
-                <label for="scale">Scale</label>
-                <select id="scale">
-                    <option value="Linear">Linear</option>
-                    <option value="Mel" selected>Mel</option>
-                </select>
-            </div>
-            <div class="control-row">
-                <label for="colormap">Colormap</label>
-                <select id="colormap"></select>
-            </div>
-            <div class="control-row">
-                <label for="speed">Speed</label>
-                <select id="speed">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4" selected>4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
-                    <option value="10">10</option>
-                </select>
-            </div>
-        </fieldset>
-
-        <fieldset>
-            <legend>Spectrogram</legend>
-            <div class="control-row">
-                <label for="db-mode">Level Display</label>
-                <select id="db-mode">
-                    <option value="HL" selected>dB HL (Hearing Level)</option>
-                    <option value="SPL">dB SPL (Sound Pressure)</option>
-                </select>
-            </div>
-            <div class="control-row">
-                <label for="sizeFFT">Buffer Size</label>
-                <select id="sizeFFT">
-                    <option value="2048">2048</option>
-                    <option value="4096">4096</option>
-                    <option value="8192" selected>8192</option>
-                </select>
-            </div>
-            <div class="control-row">
-                <label for="f_min">Min Freq (Hz)</label>
-                <input id="f_min" type="number" min="0" max="20000" value="0">
-            </div>
-            <div class="control-row">
-                <label for="f_max">Max Freq (Hz)</label>
-                <input id="f_max" type="number" min="0" max="20000" value="9000">
-            </div>
-        </fieldset>
-
-        <fieldset>
-            <legend>General</legend>
-            <div class="control-row">
-                <label for="sensibility">Sensitivity</label>
-                <div class="range-group">
-                    <input id="sensibility" type="range" value="60" min="10" max="100">
-                    <output id="output_sensibility">60</output>
-                    <span>dB</span>
-                </div>
-            </div>
-            <div class="control-row">
-                <label for="scrolling">Scrolling</label>
-                <input type="checkbox" id="scrolling" checked>
-            </div>
-            <div class="control-row">
-                <label for="stop">Pause</label>
-                <input type="checkbox" id="stop">
-            </div>
-            <div class="control-row">
-                <label for="window">Window</label>
-                <select id="window">
-                    <option value="None">None</option>
-                    <option value="Cosine">Cosine</option>
-                    <option value="Hanning">Hanning</option>
-                    <option value="BH7" selected>Blackman-Harris 7</option>
-                </select>
-            </div>
-            <div class="control-row">
-                <label for="FFT">FFT Engine</label>
-                <select id="FFT">
-                    <option value="myFFT" selected>Custom FFT</option>
-                    <option value="WebAudio">Web Audio</option>
-                </select>
-            </div>
-            <div class="control-row">
-                <label for="microphone">Microphone</label>
-                <select id="microphone"></select>
-            </div>
-        </fieldset>
-
-        <div class="panel-actions">
-            <button id="screenshot-btn">Screenshot (S)</button>
-            <button id="info-btn">Info</button>
-        </div>
-
-        <div class="shortcuts-hint">
-            Space: pause &middot; S: screenshot &middot; F: fullscreen &middot; P: present &middot; Esc: close
-        </div>
-    </div>
-
-    <!-- Info Modal -->
-    <div id="info-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>System Info</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <pre id="info-text"></pre>
-        </div>
-    </div>
-
-    <script src="js-colormaps.js"></script>
-    <script src="audiogram.js"></script>
-    <script src="spectrogram.js"></script>
+  <script src="js-colormaps.js"></script>
+  <script src="audiogram.js"></script>
+  <script src="spectrogram.js"></script>
+  <script src="noise-floor.js"></script>
+  <script src="filter-bank.js"></script>
+  <script src="recorder.js"></script>
+  <script src="app.js"></script>
 </body>
-
 </html>
