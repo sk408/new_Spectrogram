@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><title>Engine Test</title></head>
+<body>
+<canvas id="c1" width="400" height="200"></canvas>
+<canvas id="c2" width="400" height="200"></canvas>
+<script src="../js-colormaps.js"></script>
+<script src="../audiogram.js"></script>
+<script src="../spectrogram.js"></script>
+<script>
+(async () => {
+  const ctx = new AudioContext();
+  const a1 = ctx.createAnalyser(); a1.fftSize = 8192;
+  const a2 = ctx.createAnalyser(); a2.fftSize = 8192;
+
+  const e1 = createSpectrogramEngine(document.getElementById('c1'), a1, { colormap: 'inferno' });
+  const e2 = createSpectrogramEngine(document.getElementById('c2'), a2, { colormap: 'viridis' });
+
+  console.assert(e1 !== e2, 'Two distinct instances');
+  e1.setOption('colormap', 'plasma');
+  console.assert(typeof e1.analyserNode === 'object', 'analyserNode getter works');
+  console.assert(e1.isRunning === false, 'Not running before start()');
+  e1.start();
+  console.assert(e1.isRunning === true, 'Running after start()');
+  e1.stop();
+  console.assert(e1.isRunning === false, 'Not running after stop()');
+
+  console.log('All engine factory tests passed');
+})();
+</script>
+</body>
+</html>
