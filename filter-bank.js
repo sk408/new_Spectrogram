@@ -1,6 +1,7 @@
 'use strict';
 
-const AUDIO_FREQS = [250, 500, 1000, 2000, 4000, 8000];
+// AUDIO_FREQS is declared as a global in audiogram.js (loaded first)
+// const AUDIO_FREQS = [250, 500, 1000, 2000, 4000, 8000];  — do not re-declare
 
 /**
  * Build a calibrated BiquadFilter chain for the given threshold array.

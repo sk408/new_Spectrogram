@@ -20,7 +20,7 @@ class NoiseFloor {
     this._ring = [];
     this._head = 0;
     this._count = 0;
-    this._floor = new Float32Array(bins).fill(-140);
+    this._floor = new Float32Array(bins).fill(Infinity);
   }
 
   /**
@@ -78,7 +78,7 @@ class NoiseFloor {
     this._ring = [];
     this._head = 0;
     this._count = 0;
-    this._floor.fill(-140);
+    this._floor.fill(Infinity);
   }
 }
 

@@ -68,6 +68,12 @@ class Recorder {
    * srcDry and srcFilter are recreated before each play() call.
    */
   buildPlaybackGraph(buffer, filterChain, normalAnalyser, lossAnalyser) {
+    // Disconnect previous gain nodes before rebuilding to avoid orphaned connections
+    if (this._graph) {
+      this._graph.dryGain.disconnect();
+      this._graph.filterGain.disconnect();
+    }
+
     this._buffer = buffer;
     this._filterChain = filterChain;
     this._normalAnalyser = normalAnalyser;

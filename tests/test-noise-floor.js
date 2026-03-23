@@ -56,7 +56,7 @@ const { NoiseFloor } = require(__dirname + '/../noise-floor.js');
   nf.update([-50, -40]);
   nf.reset();
   const floor = nf.getFloor();
-  assert(floor[0] <= -100, `floor[0] after reset should be ≤ -100, got ${floor[0]}`);
+  assert(floor[0] === Infinity, `floor[0] after reset should be Infinity (no-data sentinel), got ${floor[0]}`);
   console.log('✅ Test 5: reset() clears history');
 }
 

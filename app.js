@@ -10,8 +10,9 @@ let micStream = null;
 
 // Engines
 let liveEngine   = null;
-let normalEngine = null;
-let lossEngine   = null;
+let normalEngine = null;   // Record & Compare — Normal panel
+let lossEngine   = null;   // Record & Compare — With Loss panel
+let wizardEngine = null;   // Mobile wizard — single A/B panel (separate from normalEngine)
 
 // Modules
 let recorder      = null;
@@ -279,7 +280,9 @@ async function populateMicList() {
       .filter(d => d.kind === 'audioinput')
       .map(m => `<option value="${m.deviceId}">${m.label || 'Microphone ' + m.deviceId.slice(0,6)}</option>`)
       .join('');
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Could not enumerate audio devices:', err);
+  }
 }
 
 // ── Filter chain ──────────────────────────────────────────
@@ -314,7 +317,13 @@ async function startDesktopRecording() {
   const ctx = getAudioContext();
   const micId = dom.micSelect.value;
   const constraints = { audio: micId ? { deviceId: { exact: micId } } : true, video: false };
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err) {
+    alert(`Microphone access denied: ${err.message}`);
+    return;
+  }
 
   if (!recorder) recorder = new Recorder(ctx);
   await recorder.startRecording(stream);
@@ -599,7 +608,17 @@ async function toggleWizardRecording() {
     $('wizard-next-3').classList.add('hls-hidden');
     $('wizard-rerecord').classList.add('hls-hidden');
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch (err) {
+      // Reset UI state if mic access fails
+      wizardRecording = false;
+      btn.classList.remove('recording');
+      timer.classList.add('hls-hidden');
+      alert(`Microphone access denied: ${err.message}`);
+      return;
+    }
     if (!wizardRecorder) wizardRecorder = new Recorder(ctx);
     await wizardRecorder.startRecording(stream);
 
@@ -637,8 +656,8 @@ async function wizardPlayback(mode) {
 
   const activeAnalyser = mode === 'normal' ? normalAnalyser : lossAnalyser;
 
-  if (normalEngine) normalEngine.stop();
-  normalEngine = createSpectrogramEngine(compareCanvas, activeAnalyser, {
+  if (wizardEngine) wizardEngine.stop();
+  wizardEngine = createSpectrogramEngine(compareCanvas, activeAnalyser, {
     colormap:    'inferno',
     audiogram,
     showBanana:  true,
@@ -650,7 +669,7 @@ async function wizardPlayback(mode) {
   if (!wizardRecorder) wizardRecorder = new Recorder(ctx);
   wizardRecorder.buildPlaybackGraph(recordedBuffer, filterChain, normalAnalyser, lossAnalyser);
   wizardRecorder.play(mode);
-  normalEngine.start();
+  wizardEngine.start();
 
   $('wizard-ab-label').textContent = `Playing: ${mode === 'normal' ? 'Normal' : 'With Hearing Loss'}`;
 }
