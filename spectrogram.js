@@ -686,10 +686,6 @@ function plotFFT() {
   }
   sensibilityTemp = Math.max(maxIntensity, sensibility);
   colormapMarks();
-  if (!autoRanging) {
-    dom.outputSensibility.textContent = Math.floor(sensibilityTemp);
-    dom.sensibility.value = Math.floor(sensibilityTemp);
-  }
 
   ctx.beginPath();
   ctx.strokeStyle = "white";
