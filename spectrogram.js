@@ -35,6 +35,7 @@ const dom = {
   fMax:              document.getElementById("f_max"),
   sensibility:       document.getElementById("sensibility"),
   outputSensibility: document.getElementById("output_sensibility"),
+  autoRanging:       document.getElementById("auto-ranging"),
   scrolling:         document.getElementById("scrolling"),
   stop:              document.getElementById("stop"),
   windowFunc:        document.getElementById("window"),
@@ -84,6 +85,10 @@ let myXAbs = null;
 let maxIntensity = -100;
 let sensibility = 60;
 let sensibilityTemp = 60;
+let autoRanging = true;          // expand + decay vs manual slider
+const AUTO_RANGE_CAP   = 80;     // dB — anything above clips to max brightness
+const AUTO_RANGE_FLOOR = 40;     // dB — minimum sensibility before decay stops
+const AUTO_RANGE_DECAY = 0.998;  // per-frame multiplier (~6s to decay from cap to floor)
 let frecMax = 0;
 let frecMaxDisplay = "0";
 let lastFreqUpdateTime = 0;
@@ -373,7 +378,7 @@ function renderFrame() {
   fMin = parseFloat(dom.fMin.value);
   fMax = parseFloat(dom.fMax.value);
   binWidth = parseInt(dom.speed.value);
-  sensibility = parseFloat(dom.sensibility.value);
+  if (!autoRanging) sensibility = parseFloat(dom.sensibility.value);
   fNyquist = audioCtx.sampleRate / 2;
 
   // Acquire audio data
@@ -668,10 +673,23 @@ function plotFFT() {
   }
   ctx.stroke();
 
-  sensibilityTemp = maxIntensity > sensibility ? maxIntensity : sensibility;
+  if (autoRanging) {
+    if (maxIntensity > sensibility) {
+      // Signal exceeds current range: expand instantly, capped at 80 dB
+      sensibility = Math.min(maxIntensity, AUTO_RANGE_CAP);
+    } else {
+      // Signal within range: decay slowly toward floor so display tightens over time
+      sensibility = Math.max(sensibility * AUTO_RANGE_DECAY, AUTO_RANGE_FLOOR);
+    }
+    dom.sensibility.value = Math.round(sensibility);
+    dom.outputSensibility.textContent = Math.round(sensibility);
+  }
+  sensibilityTemp = Math.max(maxIntensity, sensibility);
   colormapMarks();
-  dom.outputSensibility.textContent = Math.floor(sensibilityTemp);
-  dom.sensibility.value = Math.floor(sensibilityTemp);
+  if (!autoRanging) {
+    dom.outputSensibility.textContent = Math.floor(sensibilityTemp);
+    dom.sensibility.value = Math.floor(sensibilityTemp);
+  }
 
   ctx.beginPath();
   ctx.strokeStyle = "white";
@@ -1290,7 +1308,17 @@ dom.scale.addEventListener("change", function () {
   overlayDirty = true;
 });
 
-// Sensibility slider -> update display
+// Auto-ranging toggle
+dom.autoRanging.addEventListener("change", function () {
+  autoRanging = this.checked;
+  if (!autoRanging) {
+    // Switching to manual: seed slider with current auto value
+    dom.sensibility.value = Math.round(sensibility);
+    dom.outputSensibility.textContent = Math.round(sensibility);
+  }
+});
+
+// Sensibility slider -> update display (manual mode only; auto mode updates it internally)
 dom.sensibility.addEventListener("input", function () {
   dom.outputSensibility.textContent = this.value;
 });
