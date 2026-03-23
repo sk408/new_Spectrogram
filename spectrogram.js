@@ -168,6 +168,7 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
   let audiogramRef = options.audiogram || null;
   let showBanana = options.showBanana || false;
   let showPhonemes = options.showPhonemes || false;
+  let noiseFloor = options.noiseFloor ?? null;
 
   // --- Pre-allocated Buffers ---
   let timeBuffer = null;
@@ -300,7 +301,7 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
     analyserNode.getFloatFrequencyData(freqBuffer);
 
     // NoiseFloor update (if provided)
-    if (options.noiseFloor) options.noiseFloor.update(freqBuffer);
+    if (noiseFloor) noiseFloor.update(freqBuffer);
 
     counter++;
 
@@ -522,6 +523,9 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
     const imgData = ctx.createImageData(binWidth, height);
     const pixels = imgData.data;
 
+    // Compute SNR array once per column, before the row loop
+    const snrArray = noiseFloor ? noiseFloor.getSNR(freqBuffer) : null;
+
     for (let row = 0; row < height; row++) {
       // Map pixel row → frequency
       const frac = 1 - row / deltaY0;
@@ -548,9 +552,8 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
       let r = rgb[0], g = rgb[1], b = rgb[2];
 
       // SNR brightness rendering (noise floor dimming)
-      if (options.noiseFloor) {
-        const floor = options.noiseFloor.getFloor();
-        const snr = (freqBuffer[binIdx] != null ? freqBuffer[binIdx] : -140) - (floor[binIdx] != null ? floor[binIdx] : -140);
+      if (snrArray) {
+        const snr = isFinite(snrArray[binIdx]) ? snrArray[binIdx] : 6;
         if (snr < 6) {
           // Background noise: render at 40% brightness
           r = Math.round(r * 0.4);
@@ -1011,6 +1014,7 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
       if (key === 'windowFunc')   windowFunc = val;
       if (key === 'fftEngine')    fftEngine = val;
       if (key === 'scrolling')    scrolling = val;
+      if (key === 'noiseFloor')  noiseFloor = val;
     },
     screenshot: takeScreenshot,
     resize: function () {
