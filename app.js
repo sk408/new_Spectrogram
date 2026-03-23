@@ -79,7 +79,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupWizard();
   setupKeyboard();
 
-  await switchTab('live');
+  // AudioContext requires a user gesture — start mic only when overlay is clicked
+  $('live-start-overlay').addEventListener('click', async () => {
+    $('live-start-overlay').classList.add('hls-hidden');
+    await startLiveMic();
+  });
 });
 
 // ── Tab management ────────────────────────────────────────
@@ -114,6 +118,10 @@ async function switchTab(tabName) {
 // ── Live Mic mode ─────────────────────────────────────────
 async function startLiveMic() {
   if (liveEngine && liveEngine.isRunning) return;
+
+  // Hide start overlay in case mic was triggered by tab click rather than overlay click
+  const overlay = $('live-start-overlay');
+  if (overlay) overlay.classList.add('hls-hidden');
 
   try {
     const ctx = getAudioContext();
