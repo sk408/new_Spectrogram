@@ -143,7 +143,11 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
   let myX = [];
   let myXAbs = null;
   let maxIntensity = -100;
-  let sensibility = options.sensitivity != null ? parseFloat(options.sensitivity) : 60;
+  // sensibility: fixed full-scale range (0–120 dB HL = full colormap range)
+  // sensitivityOffset: slider-driven dB offset added to correctedDB before normalising.
+  // Positive offset = brighter (more sensitive); negative = dimmer.
+  let sensibility = 120;
+  let sensitivityOffset = options.sensitivity != null ? parseFloat(options.sensitivity) : 0;
   let sensibilityTemp = sensibility;
   let frecMax = 0;
   let frecMaxDisplay = "0";
@@ -450,7 +454,7 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
     for (let i = iMin; i < iMax; i++) {
       const y = getY(i);
       const db = getCorrectedDB(i);
-      const value = db / sensibility;
+      const value = (db + sensitivityOffset) / sensibility;
       ctx.strokeStyle = "hsl(" + (360 * (1 - value)) + ",100%,50%)";
       ctx.beginPath();
       ctx.moveTo(fftWidth, y);
@@ -544,7 +548,7 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
       const rawDB = myXAbs[binIdx];
       const correctedDB = isHLMode ? rawDB - getRETSPL(freq) : rawDB;
 
-      let value = correctedDB / sensibility;
+      let value = (correctedDB + sensitivityOffset) / sensibility;
       if (value > 1) value = 1;
       if (value < 0) value = 0;
 
@@ -1002,7 +1006,7 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
       if (key === 'colormap')     { colormap = val; plotColormap(); }
       if (key === 'fMin')         { fMin = parseFloat(val); overlayDirty = true; }
       if (key === 'fMax')         { fMax = parseFloat(val); overlayDirty = true; }
-      if (key === 'sensitivity')  sensibility = parseFloat(val);
+      if (key === 'sensitivity')  sensitivityOffset = parseFloat(val);
       if (key === 'showBanana')   { showBanana = val; overlayDirty = true; }
       if (key === 'showPhonemes') { showPhonemes = val; overlayDirty = true; }
       if (key === 'audiogram')    { audiogramRef = val; overlayDirty = true; }

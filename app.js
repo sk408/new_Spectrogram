@@ -126,7 +126,7 @@ async function startLiveMic() {
   try {
     const ctx = getAudioContext();
     const micId = dom.micSelect.value;
-    const constraints = { audio: micId ? { deviceId: { exact: micId } } : true, video: false };
+    const constraints = { audio: micId ? { deviceId: { ideal: micId } } : true, video: false };
     micStream = await navigator.mediaDevices.getUserMedia(constraints);
 
     const source = ctx.createMediaStreamSource(micStream);
@@ -326,7 +326,7 @@ let recWaveAnalyser = null;  // hoisted so stopDesktopRecording can disconnect n
 async function startDesktopRecording() {
   const ctx = getAudioContext();
   const micId = dom.micSelect.value;
-  const constraints = { audio: micId ? { deviceId: { exact: micId } } : true, video: false };
+  const constraints = { audio: micId ? { deviceId: { ideal: micId } } : true, video: false };
   try {
     recStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
