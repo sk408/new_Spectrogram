@@ -215,7 +215,7 @@ function updateEngineOptions() {
 function updateSeverityBadge() {
   const thresholds = getActiveThresholds();
   const avg = thresholds.reduce((s, v) => s + v, 0) / thresholds.length;
-  dom.severityBadge.textContent = audiogram.getSeverity(avg);
+  dom.severityBadge.textContent = audiogram.getSeverity(avg).label;
 }
 
 function getActiveThresholds() {
@@ -312,36 +312,37 @@ function setupRecordControls() {
 let recTimerInterval = null;
 let recStartTime = 0;
 let waveformAnimId = null;
+let recStream = null;        // hoisted so stopDesktopRecording can stop tracks
+let recWaveAnalyser = null;  // hoisted so stopDesktopRecording can disconnect node
 
 async function startDesktopRecording() {
   const ctx = getAudioContext();
   const micId = dom.micSelect.value;
   const constraints = { audio: micId ? { deviceId: { exact: micId } } : true, video: false };
-  let stream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    recStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
     alert(`Microphone access denied: ${err.message}`);
     return;
   }
 
   if (!recorder) recorder = new Recorder(ctx);
-  await recorder.startRecording(stream);
+  await recorder.startRecording(recStream);
 
   // Waveform visualizer during recording
-  const waveSource   = ctx.createMediaStreamSource(stream);
-  const waveAnalyser = ctx.createAnalyser();
-  waveAnalyser.fftSize = 2048;
-  waveSource.connect(waveAnalyser);
+  const waveSource = ctx.createMediaStreamSource(recStream);
+  recWaveAnalyser  = ctx.createAnalyser();
+  recWaveAnalyser.fftSize = 2048;
+  waveSource.connect(recWaveAnalyser);
 
   const waveCanvas = $('canvas-waveform');
   resizeCanvas(waveCanvas);
   const waveCtx = waveCanvas.getContext('2d');
-  const waveData = new Float32Array(waveAnalyser.frequencyBinCount);
+  const waveData = new Float32Array(recWaveAnalyser.frequencyBinCount);
 
   function drawWaveform() {
     waveformAnimId = requestAnimationFrame(drawWaveform);
-    waveAnalyser.getFloatTimeDomainData(waveData);
+    recWaveAnalyser.getFloatTimeDomainData(waveData);
     const W = waveCanvas.width, H = waveCanvas.height;
     waveCtx.fillStyle = '#0a0a0f';
     waveCtx.fillRect(0, 0, W, H);
@@ -377,6 +378,8 @@ function stopWaveformVisualizer() {
 async function stopDesktopRecording() {
   clearInterval(recTimerInterval);
   stopWaveformVisualizer();
+  if (recWaveAnalyser) { recWaveAnalyser.disconnect(); recWaveAnalyser = null; }
+  if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; }
   recordedBuffer = await recorder.stopRecording();
 
   dom.recOverlay.classList.add('hls-hidden');
@@ -576,6 +579,7 @@ function buildWizardPresetCards() {
 
 let wizardRecorder = null;
 let wizardRecTimerInterval = null;
+let wizardStream = null;  // hoisted so tracks can be stopped when recording ends
 let wizardRecording = false;
 
 function setupWizard() {
@@ -608,9 +612,8 @@ async function toggleWizardRecording() {
     $('wizard-next-3').classList.add('hls-hidden');
     $('wizard-rerecord').classList.add('hls-hidden');
 
-    let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      wizardStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     } catch (err) {
       // Reset UI state if mic access fails
       wizardRecording = false;
@@ -620,7 +623,7 @@ async function toggleWizardRecording() {
       return;
     }
     if (!wizardRecorder) wizardRecorder = new Recorder(ctx);
-    await wizardRecorder.startRecording(stream);
+    await wizardRecorder.startRecording(wizardStream);
 
     let elapsed = 0;
     wizardRecTimerInterval = setInterval(() => {
@@ -633,6 +636,7 @@ async function toggleWizardRecording() {
     wizardRecording = false;
     clearInterval(wizardRecTimerInterval);
     btn.classList.remove('recording');
+    if (wizardStream) { wizardStream.getTracks().forEach(t => t.stop()); wizardStream = null; }
     recordedBuffer = await wizardRecorder.stopRecording();
     $('wizard-next-3').classList.remove('hls-hidden');
     $('wizard-rerecord').classList.remove('hls-hidden');
@@ -702,8 +706,8 @@ function setupKeyboard() {
 
 // ── Resize handler ────────────────────────────────────────
 window.addEventListener('resize', () => {
-  if (liveEngine)   resizeCanvas(dom.canvasLive);
-  if (normalEngine) resizeCanvas(dom.canvasNormal);
-  if (lossEngine)   resizeCanvas(dom.canvasLoss);
+  if (liveEngine)   { resizeCanvas(dom.canvasLive);   liveEngine.resize(); }
+  if (normalEngine) { resizeCanvas(dom.canvasNormal); normalEngine.resize(); }
+  if (lossEngine)   { resizeCanvas(dom.canvasLoss);   lossEngine.resize(); }
   resizeCanvas(dom.canvasDiff);
 });
