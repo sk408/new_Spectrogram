@@ -139,6 +139,7 @@ async function startLiveMic() {
     liveNF = new NoiseFloor({ bins: analyser.frequencyBinCount, windowMs: 3000 });
 
     liveEngine = createSpectrogramEngine(dom.canvasLive, analyser, {
+      fftEngine:   'myFFT',
       colormap:    'inferno',
       fMin:        parseFloat(dom.freqMin.value),
       fMax:        parseFloat(dom.freqMax.value),
@@ -415,6 +416,7 @@ async function initCompareEngines() {
   if (lossEngine)   lossEngine.stop();
 
   const commonOpts = {
+    fftEngine:   'myFFT',
     colormap:    'inferno',
     fMin:        parseFloat(dom.freqMin.value),
     fMax:        parseFloat(dom.freqMax.value),
@@ -670,6 +672,7 @@ async function wizardPlayback(mode) {
 
   if (wizardEngine) wizardEngine.stop();
   wizardEngine = createSpectrogramEngine(compareCanvas, activeAnalyser, {
+    fftEngine:   'myFFT',
     colormap:    'inferno',
     audiogram,
     showBanana:  true,

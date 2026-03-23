@@ -143,10 +143,10 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
   let myX = [];
   let myXAbs = null;
   let maxIntensity = -100;
-  // sensibility: fixed full-scale range (0–120 dB HL = full colormap range)
-  // sensitivityOffset: slider-driven dB offset added to correctedDB before normalising.
-  // Positive offset = brighter (more sensitive); negative = dimmer.
-  let sensibility = 120;
+  // sensibility: auto-ranging full-scale. Starts at 60, expands upward to track
+  // maxIntensity each frame (never shrinks — mirrors original behaviour).
+  // sensitivityOffset: slider fine-tune (-30..+30 dB offset) added before normalising.
+  let sensibility = 60;
   let sensitivityOffset = options.sensitivity != null ? parseFloat(options.sensitivity) : 0;
   let sensibilityTemp = sensibility;
   let frecMax = 0;
@@ -336,6 +336,9 @@ function createSpectrogramEngine(canvasEl, analyserNodeIn, options) {
       }
     }
     myXAbs = absBuffer;
+
+    // Auto-range: expand sensibility to track the peak signal level
+    if (maxIntensity > sensibility) sensibility = maxIntensity;
 
     // Frequency range bin indices
     iMin = Math.floor((myXAbs.length * fMin) / fNyquist);
