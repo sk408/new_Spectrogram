@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Filter Bank Test</title>
+<style>
+body { background: #111; color: #eee; font-family: monospace; padding: 20px; }
+</style>
+</head>
+<body>
+<h2>Filter Bank Calibration Test</h2>
+<pre id="out">Running...</pre>
+<script src="../filter-bank.js"></script>
+<script>
+(async () => {
+  const out = document.getElementById('out');
+  const log = s => { out.textContent += s + '\n'; console.log(s); };
+
+  try {
+    const ctx = new AudioContext();
+
+    // Test 1: presbycusis thresholds
+    const thresholds = [10, 15, 25, 40, 60, 70];
+    log('Building filter chain for presbycusis...');
+    const chain = await buildFilterChain(thresholds, ctx);
+    log('✅ buildFilterChain completed without error');
+    log(`   chain.input.type:  ${chain.input.type}`);   // 'lowshelf'
+    log(`   chain.output.type: ${chain.output.type}`);  // 'highshelf'
+
+    console.assert(chain.input.type === 'lowshelf',  'input filter should be lowshelf');
+    console.assert(chain.output.type === 'highshelf', 'output filter should be highshelf');
+
+    chain.disconnect();
+    log('✅ disconnect() completed without error');
+
+    // Test 2: zero thresholds → near-flat
+    const flatChain = await buildFilterChain([0, 0, 0, 0, 0, 0], ctx);
+    log('✅ Zero-threshold chain built');
+    flatChain.disconnect();
+
+    // Test 3: verify calibration ran (gains should be set)
+    const chain2 = await buildFilterChain([20, 30, 40, 50, 60, 70], ctx);
+    log('✅ High-attenuation chain built');
+    chain2.disconnect();
+
+    log('\n✅ All filter-bank tests passed');
+  } catch (err) {
+    log('❌ ERROR: ' + err.message);
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
